@@ -3,10 +3,11 @@ import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { MeshBVH, acceleratedRaycast } from "three-mesh-bvh";
 import { watchGestures, type Hit } from "./gestures";
+import { buildCloudSound, type CloudSound } from "./clouds";
 import { buildLinks, type Links } from "./links";
 import { createMusic, type Music } from "./music";
 import { applySettings, createPlaced, defaultSettings, settingsWithin, swell, throb, type Placed } from "./placement";
-import { buildMeadow, gustAt, type Meadow } from "./meadow";
+import { buildMeadow, type Meadow } from "./meadow";
 import { buildPen, inkPicture, INKS, turnPicture, undoPicture, type Pen, type Stroke } from "./pen";
 import {
   findModel,
@@ -20,7 +21,7 @@ import {
   type SavedSkull,
 } from "./save";
 import { buildSurroundings, type Surroundings } from "./scene";
-import { bus, playBirdCall, playGlitter, playPin, playRemove, setGust, setSound, startWind } from "./sound";
+import { bus, playBirdCall, playGlitter, playPin, playRemove, scheduleWind, setSound, startWind } from "./sound";
 import { buildSurprises, SPEW_SECONDS, type Surprises } from "./surprises";
 import type { Criteria, Manifest, Range, Settings } from "./types";
 import * as ui from "./ui";
@@ -59,6 +60,8 @@ const LAST_KEY = storageKey(ASSET_SET, "last-skull");
 const MIN_RING = 16;
 // A tap this many pixels from the middle of a thing still counts as a tap on it.
 const NEAR_MISS = 14;
+// The sound's timer runs this often, in milliseconds.
+const SOUND_TICK = 250;
 
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
 
@@ -75,7 +78,8 @@ const precise = window.matchMedia("(pointer: fine)").matches;
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+// three.js no longer has soft shadow maps and uses these in their place.
+renderer.shadowMap.type = THREE.PCFShadowMap;
 const scene = new THREE.Scene();
 scene.add(new THREE.HemisphereLight(0xffffff, 0xc9b79a, 1.3));
 
@@ -100,6 +104,7 @@ let surroundings: Surroundings | undefined;
 let meadow: Meadow | undefined;
 let surprises: Surprises | undefined;
 let music: Music | undefined;
+let cloudSound: CloudSound | undefined;
 let pen: Pen | undefined;
 // The id of the category that holds the pen's inks in place of models.
 const PEN = "pen";
@@ -374,7 +379,6 @@ function playMusic(seconds: number): void {
   // The music comes in sooner than the meadow grows, so the first few things can be heard.
   const sounded =
     music?.update(
-      seconds,
       placed.map((entry) => ({
         key: entry,
         position: entry.thing.point,
@@ -911,7 +915,6 @@ async function start(): Promise<void> {
     surprises?.update(seconds, camera, renderer.domElement.height);
     playMusic(seconds);
     pen?.update(seconds, surroundings?.sun.position ?? camera.position);
-    setGust(gustAt(seconds));
     controls.target.clamp(farthest, reach);
     controls.update();
     renderer.render(scene, camera);
@@ -923,6 +926,18 @@ async function start(): Promise<void> {
   renderer.setAnimationLoop((milliseconds) => {
     if (!held) draw(milliseconds / 1000);
   });
+  // A browser stops drawing a page it is not showing but still runs its timers, so the sound keeps time with one.
+  window.setInterval(() => {
+    music?.schedule();
+    scheduleWind();
+    // The clouds' sounds start with the wind.
+    const audio = bus();
+    const banks = surroundings?.clouds?.banks ?? [];
+    if (audio && !cloudSound && banks.length > 0) {
+      cloudSound = buildCloudSound(audio.context, audio.master, banks, () => performance.now() / 1000);
+    }
+    cloudSound?.schedule();
+  }, SOUND_TICK);
 
   // Lets a test or the browser console drive the page. A browser stops drawing a page
   // it is not showing, so a test calls draw itself.
@@ -947,9 +962,11 @@ async function start(): Promise<void> {
         firstRabbitDue,
       }),
       surprises,
+      clouds: surroundings?.clouds,
       links,
       pen,
       sendRabbit,
+      music: () => music,
       sounding: () => placed.filter((entry) => clock - entry.soundedAt < entry.rings).length,
       hold: (on: boolean) => {
         held = on;
