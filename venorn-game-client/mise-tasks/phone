@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+#MISE description="Build the client and serve it to phones on the same network"
+#MISE depends=[":build"]
+#MISE dir="{{config_root}}"
+#USAGE flag "--port <port>" help="Port to serve on" default="5190"
+set -euo pipefail
+
+# Only the built site in dist/ is served. The live-reload server stays on this Mac.
+echo "Open one of these on a phone that is on the same network as this Mac:"
+ifconfig | awk -v port="${usage_port}" '/inet / && $2 != "127.0.0.1" { print "  http://" $2 ":" port "/" }'
+exec vite preview --host --port "${usage_port}" --strictPort
