@@ -1,6 +1,6 @@
 # Agent instructions
 
-venorn is a browser game about adorning a skull in a meadow. `README.md` describes the game and the repository layout.
+venorn is a browser game about adorning a skull in a meadow. `README.md` describes the game and the repository layout. `STATUS.md` says what is built, what is waiting on codekiln and what is not built yet. Update it when that changes.
 
 ## Tools and tasks
 
