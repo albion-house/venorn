@@ -9,9 +9,10 @@ The pipeline makes relief models with no back, and the viewer holds the camera w
 - The pipeline makes closed models. Each part of a cutout swells as far as it is wide, so a capsule is round and the horn is a cone. The far side of the skull mirrors the near side.
 - Pinned things stand off the skull on their pins and cast shadows. A butterfly holds its wings up. A new Depth adjustment makes a thing deeper or presses it flat.
 - A new pipeline stage splits the painting around the skull into four layers: the meadow, the clouds, the forest and the sky.
-- The viewer wraps the clouds and the forest around the scene and paints the sky on a dome. The clouds drift, a sun circles the sky, birds fly behind the forest, and a quiet wind can be switched on.
+- The viewer wraps the clouds and the forest around the scene and paints the sky on a dome. The clouds drift and slither, each a little differently. A sun circles the sky. Now and then a flock of birds crosses the gap between the hills of the forest, calling. A wind blows, and its sound rises and falls with the gusts in the meadow.
 - The meadow is cut paper. The pipeline cuts the painted meadow free of its dark base and splits it into separate plants. The skull sits in a thicket of them, with rings of cut paper behind, out to the horizon. The plants sway in a wind, and the far ones are out of focus.
-- **BREAKING** The camera turns all the way around the skull and up over it. It zooms in close and pans.
+- **BREAKING** The camera turns all the way around the skull and up over it. It zooms in close and pans. "Front view" and "Rear view" look at the skull straight on from either side.
+- "Arrange as painted" fills both sides of the skull, the far side as a mirror image of the near side.
 - A right click removes a pinned thing. On a touch screen, pressing and holding it does the same.
 
 ## Capabilities

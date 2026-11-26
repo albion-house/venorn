@@ -67,7 +67,7 @@ The pipeline SHALL export one source's models, criteria, preview pictures and sc
 #### Scenario: Scene is exported
 
 - **WHEN** the export stage runs on a source that declares a scene
-- **THEN** the manifest lists each layer with its picture, its edges in the structure's model units and its distance from the structure
+- **THEN** the manifest lists each layer with its picture, its edges in the structure's model units, its distance from the structure and the line of its top edge
 - **AND** the manifest gives the backdrop's colors by height and the level and color of the ground
 - **AND** the manifest lists the ground's cutout and each plant with its picture, its size and where its root is
 
