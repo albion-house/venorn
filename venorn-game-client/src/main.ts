@@ -5,9 +5,20 @@ import { MeshBVH, acceleratedRaycast } from "three-mesh-bvh";
 import { watchGestures, type Hit } from "./gestures";
 import { buildLinks, type Links } from "./links";
 import { createMusic, type Music } from "./music";
-import { applySettings, createPlaced, defaultSettings, swell, throb, type Placed } from "./placement";
+import { applySettings, createPlaced, defaultSettings, settingsWithin, swell, throb, type Placed } from "./placement";
 import { buildMeadow, gustAt, type Meadow } from "./meadow";
-import { buildPen, inkPicture, INKS, undoPicture, type Pen } from "./pen";
+import { buildPen, inkPicture, INKS, undoPicture, type Pen, type Stroke } from "./pen";
+import {
+  findModel,
+  isBare,
+  readSkull,
+  saveStroke,
+  saveThing,
+  spotFrom,
+  storageKey,
+  writeSkull,
+  type SavedSkull,
+} from "./save";
 import { buildSurroundings, type Surroundings } from "./scene";
 import { bus, playBirdCall, playGlitter, playPin, playRemove, setGust, setSound, startWind } from "./sound";
 import { buildSurprises, SPEW_SECONDS, type Surprises } from "./surprises";
@@ -39,6 +50,11 @@ const RABBIT_REST = 100;
 // This many things along the spike set off a spew of glitter, at most once in this many seconds.
 const IN_A_ROW = 3;
 const SPEW_REST = 300;
+// The skull is saved this many milliseconds after its last change, so a drag is saved once, when it ends.
+const SAVE_AFTER = 400;
+// Where the browser keeps the skull on the structure, and the last one cleared away.
+const SKULL_KEY = storageKey(ASSET_SET, "skull");
+const LAST_KEY = storageKey(ASSET_SET, "last-skull");
 // The ring around a selected thing is at least this many pixels in radius.
 const MIN_RING = 16;
 // A tap this many pixels from the middle of a thing still counts as a tap on it.
@@ -99,6 +115,8 @@ let high = 1;
 let lush = 0;
 let clock = 0;
 let rabbits = 0;
+// The first rabbit comes with the sixth thing on the skull, and later ones by chance.
+let firstRabbitDue = true;
 let lastRabbit = -Infinity;
 let lastSpew = -Infinity;
 let rowBest = 0;
@@ -120,6 +138,13 @@ let shaping = false;
 // Things whose shape is recomputed before the next frame is drawn.
 const stale = new Set<Placed>();
 let onScreen: ui.OnScreen | undefined;
+// The last skull cleared away, which the menu can bring back.
+let lastSkull: SavedSkull | undefined;
+// A saved skull is being put on the structure, so its things are not saved again as they go on.
+let restoring = false;
+let saveTimer: number | undefined;
+// The browser refused to keep the skull, and the player has been told.
+let refused = false;
 
 async function loadMesh(file: string): Promise<THREE.Mesh> {
   const gltf = await loader.loadAsync(ASSETS + file);
@@ -167,7 +192,9 @@ function painting(): boolean {
 }
 
 function undoStroke(): void {
-  say(pen?.undo() ? "Took back the last stroke" : "No stroke to take back");
+  const undone = pen?.undo() ?? false;
+  if (undone) changed();
+  say(undone ? "Took back the last stroke" : "No stroke to take back");
 }
 
 /** Show a category in the dock and its variations in the strip. */
@@ -207,13 +234,24 @@ function clamp(value: number, range: Range): number {
   return Math.min(range.max, Math.max(range.min, value));
 }
 
-function pin(id: string, point: THREE.Vector3, normal: THREE.Vector3, settings?: Partial<Settings>): Placed {
+/**
+ * Pin a model to the structure. A thing brought back from a saved skull does not
+ * throb as a new pin does, and keeps the slow pulse of an old one.
+ */
+function pin(
+  id: string,
+  point: THREE.Vector3,
+  normal: THREE.Vector3,
+  settings?: Partial<Settings>,
+  restored = false,
+): Placed {
   const { criteria, mesh } = models.get(id)!;
   const thing = createPlaced(criteria, mesh, point, normal, STRUCTURE_SIZE);
   Object.assign(thing.settings, settings);
   applySettings(thing, structure, STRUCTURE_SIZE);
   scene.add(thing.group);
-  placed.push({ thing, pinnedAt: performance.now() / 1000, soundedAt: -Infinity, rings: 1 });
+  placed.push({ thing, pinnedAt: restored ? -Infinity : performance.now() / 1000, soundedAt: -Infinity, rings: 1 });
+  changed();
   return thing;
 }
 
@@ -231,6 +269,7 @@ function unpin(thing: Placed): void {
     1,
   );
   if (selected === thing) select(undefined);
+  changed();
 }
 
 /** Turn a placed thing into another model, where it is. */
@@ -248,6 +287,7 @@ function swap(thing: Placed, id: string): void {
   discard(thing);
   scene.add(next.group);
   entry.thing = next;
+  changed();
   if (selected === thing) {
     selected = next;
     showDesign();
@@ -270,7 +310,7 @@ function select(thing: Placed | undefined, openWheel = false): void {
 function showDesign(): void {
   const thing = designOpen ? selected : undefined;
   ui.showDesign(thing, {
-    change: () => thing && stale.add(thing),
+    change: () => thing && markChanged(thing),
     reset: () => {
       if (!thing) return;
       Object.assign(thing.settings, defaultSettings(thing.criteria));
@@ -283,9 +323,15 @@ function showDesign(): void {
   });
 }
 
+/** Recompute a thing's shape before the next frame, and save the skull once the changes stop. */
+function markChanged(thing: Placed): void {
+  stale.add(thing);
+  changed();
+}
+
 /** Recompute a thing's shape before the next frame, and keep the design bar in step. */
 function reshape(thing: Placed): void {
-  stale.add(thing);
+  markChanged(thing);
   if (designOpen && thing === selected) ui.refreshDesign(thing);
 }
 
@@ -364,6 +410,7 @@ function checkRow(): void {
 function sendRabbit(): boolean {
   if (!surprises?.rabbit(camera, surroundings?.gapNear(camera))) return false;
   rabbits++;
+  firstRabbitDue = false;
   lastRabbit = performance.now() / 1000;
   // A flock crosses the gap the rabbit is making for.
   surroundings?.flockBy(clock + 5);
@@ -378,7 +425,7 @@ function decorated(): void {
   checkRow();
   const now = performance.now() / 1000;
   const due =
-    rabbits === 0 ? placed.length >= RABBIT_AT : now - lastRabbit >= RABBIT_REST && Math.random() < RABBIT_CHANCE;
+    firstRabbitDue ? placed.length >= RABBIT_AT : now - lastRabbit >= RABBIT_REST && Math.random() < RABBIT_CHANCE;
   if (due) sendRabbit();
 }
 
@@ -391,10 +438,114 @@ function takeOff(thing: Placed): void {
 function clear(): void {
   while (placed.length > 0) unpin(placed[0].thing);
   pen?.clear();
+  changed();
+}
+
+/** The skull on the structure as it is saved: its things and its strokes. */
+function snapshot(): SavedSkull {
+  return {
+    version: 1,
+    things: placed.map(({ thing }) => saveThing(thing, STRUCTURE_SIZE)),
+    strokes: (pen?.strokes() ?? []).map((stroke) => saveStroke(stroke.ink.id, stroke.spots, STRUCTURE_SIZE)),
+  };
+}
+
+/** Save the skull now. A bare skull leaves nothing saved. */
+function saveNow(): void {
+  window.clearTimeout(saveTimer);
+  saveTimer = undefined;
+  const skull = snapshot();
+  if (writeSkull(SKULL_KEY, isBare(skull) ? undefined : skull) || refused) return;
+  refused = true;
+  say("This browser is not keeping the skull, so it will be gone when the page closes");
+}
+
+/** The skull has changed: save it once the changes stop. */
+function changed(): void {
+  if (restoring) return;
+  window.clearTimeout(saveTimer);
+  saveTimer = window.setTimeout(saveNow, SAVE_AFTER);
+}
+
+/**
+ * Put a saved skull on the structure in place of the one there. A saved thing whose
+ * model the asset set no longer has is left out. Returns how many were left out.
+ * The scene takes the skull in without answering it: no glitter, no burst and no rabbit.
+ */
+function restore(skull: SavedSkull): number {
+  restoring = true;
+  clear();
+  const all = [...models.values()].map((entry) => entry.criteria);
+  let missing = 0;
+  for (const saved of skull.things) {
+    const criteria = findModel(saved, all);
+    if (!criteria) {
+      missing++;
+      continue;
+    }
+    const point = new THREE.Vector3().fromArray(saved.point).multiplyScalar(STRUCTURE_SIZE);
+    const normal = new THREE.Vector3().fromArray(saved.normal).normalize();
+    pin(criteria.id, point, normal, settingsWithin(criteria, saved.settings), true);
+  }
+  const strokes: Stroke[] = skull.strokes.flatMap((stroke) => {
+    const ink = INKS.find((candidate) => candidate.id === stroke.ink);
+    return ink ? [{ ink, spots: stroke.spots.map((spot) => spot && spotFrom(spot, STRUCTURE_SIZE)) }] : [];
+  });
+  pen?.redraw(strokes);
+  restoring = false;
+  // A row that was already on the spike is not a new one.
+  rowBest = surprises?.spike ? surprises.alongSpike(placed.map((entry) => entry.thing.point)) : 0;
+  if (placed.length >= RABBIT_AT) firstRabbitDue = false;
+  return missing;
+}
+
+function without(missing: number): string {
+  return missing === 0 ? "" : ` without ${missing} ${missing === 1 ? "thing" : "things"} this asset set no longer has`;
+}
+
+/** Set the last skull, which the menu can bring back, or none. */
+function setLastSkull(skull: SavedSkull | undefined): void {
+  lastSkull = skull && !isBare(skull) ? skull : undefined;
+  document.querySelector<HTMLElement>("#bring-back")!.hidden = !lastSkull;
+}
+
+/** Keep a skull as the last skull, in the browser too. */
+function putAside(skull: SavedSkull): void {
+  setLastSkull(skull);
+  writeSkull(LAST_KEY, lastSkull);
+}
+
+/** Start over with a bare skull. The skull that was there can be brought back from the menu. */
+function clearSkull(): void {
+  const skull = snapshot();
+  if (isBare(skull)) {
+    say("");
+    return;
+  }
+  putAside(skull);
+  clear();
+  saveNow();
+  say("Cleared. The menu can bring the skull back");
+}
+
+/** Bring back the last skull cleared away. The skull it replaces becomes the last skull, so nothing is lost. */
+function bringBack(): void {
+  if (!lastSkull) return;
+  const replaced = snapshot();
+  const missing = restore(lastSkull);
+  putAside(replaced);
+  saveNow();
+  say(
+    `Brought back the last skull${without(missing)}` +
+      (lastSkull ? ". The menu can bring back the one it replaced" : ""),
+  );
 }
 
 /** Put every thing where the painting has it, and its mirror image on the far side. */
 function arrangeAsPainted(): void {
+  const before = snapshot();
+  const kept = !isBare(before);
+  if (kept) putAside(before);
   clear();
   const turn: Record<string, number> = {};
   const origin = new THREE.Vector3();
@@ -418,7 +569,10 @@ function arrangeAsPainted(): void {
       pin(entry.id, hit.point, normal, side === 1 ? { scale, spin } : { scale, spin: -spin, mirror: true });
     }
   }
-  say(`Arranged ${placed.length} things as painted, on both sides`);
+  say(
+    `Arranged ${placed.length} things as painted, on both sides` +
+      (kept ? ". The menu can bring back the skull you had" : ""),
+  );
   decorated();
 }
 
@@ -639,7 +793,7 @@ async function start(): Promise<void> {
     move: (thing, hit) => {
       thing.point.copy(hit.point);
       thing.normal.copy(hit.normal);
-      stale.add(thing);
+      markChanged(thing);
     },
     resize: resizeThing,
     turn: turnThing,
@@ -664,7 +818,10 @@ async function start(): Promise<void> {
       }
     },
     strokeLift: () => pen?.lift(),
-    strokeEnd: () => pen?.end(),
+    strokeEnd: () => {
+      pen?.end();
+      changed();
+    },
     shaping: (on) => {
       // A thing that was dragged may now lie along the spike.
       if (shaping && !on) checkRow();
@@ -673,10 +830,8 @@ async function start(): Promise<void> {
   });
   watchKeys();
   document.querySelector("#arrange")!.addEventListener("click", arrangeAsPainted);
-  document.querySelector("#clear")!.addEventListener("click", () => {
-    clear();
-    say("");
-  });
+  document.querySelector("#clear")!.addEventListener("click", clearSkull);
+  document.querySelector("#bring-back")!.addEventListener("click", bringBack);
   document.querySelector("#front")!.addEventListener("click", () => lookFrom(1));
   document.querySelector("#rear")!.addEventListener("click", () => lookFrom(-1));
   document.querySelector<HTMLInputElement>("#painted")!.addEventListener("change", async (event) => {
@@ -703,6 +858,24 @@ async function start(): Promise<void> {
       ? "Keys 1 to 5 pick a kind, the arrow keys a variation. Click the skull to place one"
       : "Pick a kind below, then tap the skull to place one. Drag to look around",
   );
+
+  // The skull the player left is put back, and the scene stands as it was: the meadow grown, nothing set off.
+  setLastSkull(readSkull(LAST_KEY));
+  const saved = readSkull(SKULL_KEY);
+  if (saved && !isBare(saved)) {
+    const missing = restore(saved);
+    lush = lushness();
+    meadow?.setGrowth(lush);
+    say(`Your skull is back${without(missing)}. Clear, in the menu, starts a new one`);
+  }
+  // A change still waiting to be saved is saved before the page goes.
+  const flush = (): void => {
+    if (saveTimer !== undefined) saveNow();
+  };
+  window.addEventListener("pagehide", flush);
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) flush();
+  });
 
   const reach = new THREE.Vector3(PAN_REACH, PAN_REACH, PAN_REACH);
   const farthest = reach.clone().negate();
@@ -743,7 +916,18 @@ async function start(): Promise<void> {
       chooseCategory,
       chooseVariation,
       select,
-      state: () => ({ category, variation, selected, wheelOpen, designOpen, onScreen, lush, rowBest, rabbits }),
+      state: () => ({
+        category,
+        variation,
+        selected,
+        wheelOpen,
+        designOpen,
+        onScreen,
+        lush,
+        rowBest,
+        rabbits,
+        firstRabbitDue,
+      }),
       surprises,
       links,
       pen,
@@ -758,6 +942,10 @@ async function start(): Promise<void> {
         meadow?.setGrowth(lush);
       },
       arrangeAsPainted,
+      snapshot,
+      save: saveNow,
+      clearSkull,
+      bringBack,
       frontView,
       lookFrom,
       structure,

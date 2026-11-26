@@ -85,6 +85,8 @@ The dock along the bottom holds the five categories (butterflies, candies, pills
 
 The button in the top left corner opens the menu: Front view, Rear view, Arrange as painted, Clear, Painted skull and Sound.
 
+The browser keeps the decorated skull, its things and its strokes, and puts it back when the page opens again. "Clear" and "Arrange as painted" keep the skull they replace, and "Bring back the last skull" in the menu puts it back. A browser that refuses storage, as a private window can, keeps nothing after the page closes, and the status line says so.
+
 The scene answers the decorating:
 
 - The meadow starts as low shoots and grows to its full height by the time 24 things are on the skull.

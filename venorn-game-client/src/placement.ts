@@ -1,7 +1,7 @@
 // Shapes a model onto the structure from its adjustment criteria and the player's settings.
 
 import * as THREE from "three";
-import type { Criteria, Settings } from "./types";
+import type { Criteria, Range, Settings } from "./types";
 
 export interface Placed {
   criteria: Criteria;
@@ -46,6 +46,27 @@ export function defaultSettings(criteria: Criteria): Settings {
     bend: 0,
     mirror: false,
   };
+}
+
+/** Settings chosen earlier, held to what the criteria allow now. A setting not given takes its default. */
+export function settingsWithin(criteria: Criteria, chosen: Partial<Settings>): Settings {
+  const { adjust, attach } = criteria;
+  const settings = defaultSettings(criteria);
+  const within = (value: number | undefined, range: Range | undefined, fallback: number): number =>
+    value === undefined || !range ? fallback : Math.min(range.max, Math.max(range.min, value));
+  settings.scale = within(chosen.scale, adjust.scale, settings.scale);
+  settings.spin = within(chosen.spin, adjust.spin, settings.spin);
+  settings.standoff = within(chosen.standoff, attach.standoff, settings.standoff);
+  settings.tilt = within(chosen.tilt, adjust.tilt, settings.tilt);
+  settings.depth = within(chosen.depth, adjust.depth, settings.depth);
+  settings.hue = within(chosen.hue, adjust.hue, settings.hue);
+  settings.conform = within(chosen.conform, adjust.conform, settings.conform);
+  settings.fold = within(chosen.fold, adjust.fold, settings.fold);
+  const bend = adjust.bend.enabled && adjust.bend.max ? adjust.bend.max : 0;
+  settings.bend = within(chosen.bend, { default: 0, min: -bend, max: bend }, 0);
+  // Arranging as painted mirrors the far side's things whatever their criteria say, so a saved mirror is kept.
+  settings.mirror = chosen.mirror === true;
+  return settings;
 }
 
 export function createPlaced(
