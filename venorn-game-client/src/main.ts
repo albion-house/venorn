@@ -6,7 +6,7 @@ import { watchGestures, type Hit } from "./gestures";
 import { buildLinks, type Links } from "./links";
 import { createMusic, type Music } from "./music";
 import { applySettings, createPlaced, defaultSettings, settingsWithin, swell, throb, type Placed } from "./placement";
-import { buildMeadow, gustAt, type Meadow } from "./meadow";
+import { buildMeadow, type Meadow } from "./meadow";
 import { buildPen, inkPicture, INKS, turnPicture, undoPicture, type Pen, type Stroke } from "./pen";
 import {
   findModel,
@@ -20,7 +20,7 @@ import {
   type SavedSkull,
 } from "./save";
 import { buildSurroundings, type Surroundings } from "./scene";
-import { bus, playBirdCall, playGlitter, playPin, playRemove, setGust, setSound, startWind } from "./sound";
+import { bus, playBirdCall, playGlitter, playPin, playRemove, scheduleWind, setSound, startWind } from "./sound";
 import { buildSurprises, SPEW_SECONDS, type Surprises } from "./surprises";
 import type { Criteria, Manifest, Range, Settings } from "./types";
 import * as ui from "./ui";
@@ -912,7 +912,6 @@ async function start(): Promise<void> {
     surprises?.update(seconds, camera, renderer.domElement.height);
     playMusic(seconds);
     pen?.update(seconds, surroundings?.sun.position ?? camera.position);
-    setGust(gustAt(seconds));
     controls.target.clamp(farthest, reach);
     controls.update();
     renderer.render(scene, camera);
@@ -925,7 +924,10 @@ async function start(): Promise<void> {
     if (!held) draw(milliseconds / 1000);
   });
   // A browser stops drawing a page it is not showing but still runs its timers, so the sound keeps time with one.
-  window.setInterval(() => music?.schedule(), SOUND_TICK);
+  window.setInterval(() => {
+    music?.schedule();
+    scheduleWind();
+  }, SOUND_TICK);
 
   // Lets a test or the browser console drive the page. A browser stops drawing a page
   // it is not showing, so a test calls draw itself.

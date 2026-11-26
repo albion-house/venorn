@@ -34,15 +34,15 @@ The meadow's vertex shader computes the same function, delayed by how far down t
 
 ### The wind's sound
 
-Most of the old wind's loudness is noise below 260 Hz that never falls below half its peak level, with a wide band of breath over it. Steady, broad noise is what a stream or a waterfall sounds like. The new wind:
+Rendered for two minutes, the old wind's loudness stayed within 7.5 dB, and 57% of its power was below 260 Hz. Steady, low, broad noise is what a stream or a waterfall sounds like. The new wind:
 
-- Plays pink noise from two buffers of different lengths, one to each side, so that neither loop is heard repeating.
-- Has a soft rush below 500 Hz whose level follows the gust, from a fifth of its peak in a lull.
-- Has two whistles, narrow bands of noise whose pitch rises with the gust from about 300 Hz to 900 Hz.
-- Rustles leaves, a high band of noise that sounds only in the stronger part of a gust and flutters.
-- Pans each gust from one side to the other.
+- Plays pink noise from two loops, of 7.3 and 11.9 seconds, so that neither is heard repeating.
+- Has a rush of air between 200 Hz and a cutoff that rises from 380 Hz in a lull to 1080 Hz at the height of a gust. In a lull the rush is a sixth as loud as at the height of a gust.
+- Has two whistles, narrow bands of noise whose pitch rises with the gust, from 300 to 900 Hz and from 430 to 1260 Hz. They fall silent in a lull.
+- Rustles leaves, a band of noise around 5.6 kHz that sounds only in the stronger part of a gust and flutters ten times a second.
+- Sends the whistles and the leaves in from the left as a gust picks up and out to the right as it dies away, the way the meadow's wind blows.
 
-Its level from the front view is about what it was, so the balance against the music holds.
+Its mean loudness is what the old wind's was, so the balance against the music holds.
 
 ### Banks of clouds
 

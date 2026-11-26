@@ -3,6 +3,7 @@
 
 import * as THREE from "three";
 import type { Plant, SceneLayers } from "./types";
+import { GUST_GLSL, GUST_LAG } from "./wind";
 
 export interface Meadow {
   group: THREE.Group;
@@ -58,11 +59,7 @@ function random(seed: number): () => number {
   };
 }
 
-// Gusts come and go at this pace, in radians a second. The wind's sound follows the same pace.
-const GUST_PACE = 0.31;
-
 const SWAY_VERTEX = /* glsl */ `
-  #define GUST_PACE ${GUST_PACE}
   #define SHOOT ${SHOOT}
   vec3 transformed = vec3(position);
   float paperHeight = uv.y;
@@ -94,9 +91,9 @@ const SWAY_VERTEX = /* glsl */ `
     float paperLean = (fract(paperSeed * 7.13) - 0.5) * 0.5 * paperSize;
     transformed.z += paperCurl * transformed.x * transformed.x * (0.5 + paperHeight) + paperLean * paperHeight * paperHeight;
   #endif
-  // Gusts travel across the meadow, and each plant swings in its own time.
+  // Gusts travel across the meadow, and each plant swings in its own time. The wind's sound follows the same gusts.
   float paperAlong = dot(paperOrigin.xz, uWind);
-  float paperGust = 0.55 + 0.45 * sin(uTime * GUST_PACE + paperAlong * 0.22);
+  float paperGust = 0.15 + 0.85 * gustAt(uTime + paperAlong * ${GUST_LAG});
   float paperSwing = paperHeight * paperHeight * paperGust
     * (sin(uTime * 1.25 + paperAlong * 0.9 + paperSeed * 6.283) + 0.35 * sin(uTime * 2.9 + paperSeed * 40.0));
   // A grown meadow sways further than a meadow of shoots.
@@ -159,7 +156,7 @@ class Paper {
       uTexel: { value: new THREE.Vector2(1 / size.width, 1 / size.height) },
       uFade: { value: new THREE.Vector2(0.25, 1.1) },
     };
-    const moving = "uniform float uTime; uniform vec2 uWind; uniform float uSway; uniform float uGrow; uniform float uSink;";
+    const moving = `uniform float uTime; uniform vec2 uWind; uniform float uSway; uniform float uGrow; uniform float uSink;\n${GUST_GLSL}`;
     const declare = /* glsl */ `
       ${moving}
       varying float vPaperRadius; varying float vPaperView;
@@ -207,11 +204,6 @@ class Paper {
     };
     return { paper, shadow };
   }
-}
-
-/** How hard the wind blows at the middle of the scene: 0 between gusts, 1 at the height of one. */
-export function gustAt(seconds: number): number {
-  return 0.5 + 0.5 * Math.sin(seconds * GUST_PACE);
 }
 
 /** The ground: flat under the structure, then falling away on every side. */

@@ -1,16 +1,12 @@
 // The game's sounds, all made in the browser. A browser lets a page make
 // sound only after a tap, a click or a key press, so nothing plays before that.
 
+import { buildWind, type Wind } from "./wind";
+
 let context: AudioContext | undefined;
 let master: GainNode | undefined;
 let wanted = true;
 
-interface Wind {
-  low: GainNode;
-  air: GainNode;
-  airTone: BiquadFilterNode;
-  leaves: GainNode;
-}
 let wind: Wind | undefined;
 
 /** The one output every sound goes through, so one switch silences them all. */
@@ -41,47 +37,14 @@ export function startWind(): void {
   const { context, master } = output();
   void context.resume();
   if (wind) return;
-
-  const buffer = context.createBuffer(1, context.sampleRate * 5, context.sampleRate);
-  const samples = buffer.getChannelData(0);
-  for (let i = 0; i < samples.length; i++) samples[i] = Math.random() * 2 - 1;
-  const noise = context.createBufferSource();
-  noise.buffer = buffer;
-  noise.loop = true;
-
-  // Three bands of the same noise: a low rush, the breath of moving air, and leaves.
-  const lowTone = context.createBiquadFilter();
-  lowTone.type = "lowpass";
-  lowTone.frequency.value = 260;
-  const low = context.createGain();
-
-  const airTone = context.createBiquadFilter();
-  airTone.type = "bandpass";
-  airTone.Q.value = 0.7;
-  const air = context.createGain();
-
-  const leafTone = context.createBiquadFilter();
-  leafTone.type = "bandpass";
-  leafTone.frequency.value = 5200;
-  leafTone.Q.value = 0.6;
-  const leaves = context.createGain();
-
-  noise.connect(lowTone).connect(low).connect(master);
-  noise.connect(airTone).connect(air).connect(master);
-  noise.connect(leafTone).connect(leaves).connect(master);
-  noise.start();
-  wind = { low, air, airTone, leaves };
-  setGust(0.5);
+  // The gusts follow the draw loop's clock, so the wind sounds with the meadow's sway.
+  wind = buildWind(context, master, () => performance.now() / 1000);
+  wind.schedule();
 }
 
-/** Follow the wind in the meadow: 0 between gusts, 1 at the height of one. */
-export function setGust(strength: number): void {
-  if (!context || !wind) return;
-  const soon = context.currentTime;
-  wind.low.gain.setTargetAtTime(0.22 + 0.2 * strength, soon, 0.3);
-  wind.air.gain.setTargetAtTime(0.03 + 0.12 * strength, soon, 0.3);
-  wind.airTone.frequency.setTargetAtTime(420 + 650 * strength, soon, 0.3);
-  wind.leaves.gain.setTargetAtTime(0.002 + 0.03 * strength * strength, soon, 0.2);
+/** Set the wind ahead on the audio clock. Call it from a timer, which a hidden page still runs. */
+export function scheduleWind(): void {
+  wind?.schedule();
 }
 
 /** A pin going in: a short click over a soft thud. */
