@@ -94,4 +94,6 @@ The scene answers the decorating:
 
 ## Working on venorn
 
+`STATUS.md` says what is built, what is waiting on a decision and what is not built yet.
+
 Each piece of work starts as an OpenSpec change under `openspec/changes/`. Read `AGENTS.md` before changing the repository.
