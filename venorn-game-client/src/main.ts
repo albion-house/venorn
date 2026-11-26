@@ -212,6 +212,14 @@ function turnView(): void {
   else say("Drag on the skull to draw");
 }
 
+/** What the status line says while a category is chosen and nothing is selected. */
+function hint(): string {
+  if (painting()) {
+    return `Glitter pen: drag on the skull to draw. ${precise ? "Press Z" : "Tap the arrow"} to take back a stroke`;
+  }
+  return `${categories[category].name}: ${precise ? "click" : "tap"} the skull to place one`;
+}
+
 /** Show a category in the dock and its variations in the strip. */
 function show(index: number): void {
   category = index;
@@ -226,12 +234,12 @@ function chooseCategory(index: number): void {
     // The pen draws on the structure, so no thing stays selected while it is chosen.
     select(undefined);
     show(index);
-    say(`Glitter pen: drag on the skull to draw. ${precise ? "Press Z" : "Tap the arrow"} to take back a stroke`);
+    say(hint());
     return;
   }
   show(index);
   if (selected) swap(selected, currentId());
-  else say(`${categories[index].name}: ${precise ? "click" : "tap"} the skull to place one`);
+  else say(hint());
 }
 
 /** Choose a variation of the category shown. A selected thing turns into it. */
@@ -313,13 +321,20 @@ function swap(thing: Placed, id: string): void {
   }
 }
 
-/** Select a thing, or nothing. The dock and strip follow the thing selected. */
+/**
+ * Select a thing, or nothing. The dock and strip follow the thing selected. When the selected
+ * thing is let go, the status line's hint for moving and resizing it gives way to the hint for placing one.
+ */
 function select(thing: Placed | undefined, openWheel = false): void {
+  const before = selected;
   selected = thing;
   wheelOpen = !!thing && openWheel;
   if (!thing) designOpen = false;
   showDesign();
-  if (!thing) return;
+  if (!thing) {
+    if (before) say(hint());
+    return;
+  }
   const home = homes.get(thing.criteria.id)!;
   variation[home.category] = home.variation;
   show(home.category);
