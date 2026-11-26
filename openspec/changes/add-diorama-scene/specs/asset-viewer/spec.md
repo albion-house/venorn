@@ -116,12 +116,12 @@ A right click on a pinned thing SHALL remove it. On a touch screen, pressing a p
 
 ### Requirement: Scene around the structure
 
-When the asset set has a scene, the viewer SHALL stand the ground layer in a ring around the structure, wrap the floating and far layers around the scene at their distances, and paint the backdrop on a dome. From the front view the layers SHALL line up as they do in the source image.
+When the asset set has a scene, the viewer SHALL wrap the floating and far layers around the scene at their distances and paint the backdrop on a dome. From the front view the far and floating layers SHALL line up as they do in the source image.
 
 #### Scenario: Front view matches the painting
 
 - **WHEN** the viewer opens on the `veneration-ornamentation` asset set
-- **THEN** the meadow stands in front of the skull, with the clouds, the forest and the sky behind it
+- **THEN** the skull has the clouds, the forest and the sky behind it, placed as in the painting
 
 #### Scenario: Layers shift as the camera moves
 
@@ -132,6 +132,31 @@ When the asset set has a scene, the viewer SHALL stand the ground layer in a rin
 
 - **WHEN** a person turns the camera all the way around
 - **THEN** the forest and the clouds are behind the skull from every side
+
+### Requirement: Meadow of cut paper
+
+The structure SHALL sit in a thicket of the ground's plants, each a flat cutout standing on its root and bent a little differently. Plants right beside the structure SHALL stay low. Rings of the cut-paper ground SHALL stand behind the thicket out to the far layer, and paper far from the structure SHALL be out of focus and faded. The plants SHALL sway in a wind.
+
+#### Scenario: Skull sits in a thicket
+
+- **WHEN** the viewer opens on the `veneration-ornamentation` asset set
+- **THEN** dandelions, thistles, ferns and small flowers stand around the skull on every side
+- **AND** the skull's teeth and jaw stay in view from the front
+
+#### Scenario: Meadow runs to the horizon
+
+- **WHEN** a person looks across the meadow from beside the skull
+- **THEN** rows of cut paper stand one behind another out to the forest, softer and paler with distance
+
+#### Scenario: Wind moves the plants
+
+- **WHEN** a second passes
+- **THEN** the tops of the plants have moved and their roots have stayed in place
+
+#### Scenario: Plant in front of the camera
+
+- **WHEN** the camera moves into a plant
+- **THEN** the plant thins out and the view stays clear
 
 ### Requirement: Living scene
 

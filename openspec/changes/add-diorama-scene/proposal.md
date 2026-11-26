@@ -9,7 +9,8 @@ The pipeline makes relief models with no back, and the viewer holds the camera w
 - The pipeline makes closed models. Each part of a cutout swells as far as it is wide, so a capsule is round and the horn is a cone. The far side of the skull mirrors the near side.
 - Pinned things stand off the skull on their pins and cast shadows. A butterfly holds its wings up. A new Depth adjustment makes a thing deeper or presses it flat.
 - A new pipeline stage splits the painting around the skull into four layers: the meadow, the clouds, the forest and the sky.
-- The viewer stands the meadow in a ring around the skull, wraps the clouds and the forest around the scene, and paints the sky on a dome. The clouds drift, a sun circles the sky, birds fly behind the forest, and a quiet wind can be switched on.
+- The viewer wraps the clouds and the forest around the scene and paints the sky on a dome. The clouds drift, a sun circles the sky, birds fly behind the forest, and a quiet wind can be switched on.
+- The meadow is cut paper. The pipeline cuts the painted meadow free of its dark base and splits it into separate plants. The skull sits in a thicket of them, with rings of cut paper behind, out to the horizon. The plants sway in a wind, and the far ones are out of focus.
 - **BREAKING** The camera turns all the way around the skull and up over it. It zooms in close and pans.
 - A right click removes a pinned thing. On a touch screen, pressing and holding it does the same.
 
@@ -28,7 +29,7 @@ None.
 
 - `venorn-asset-pipeline/` gains a `layers` stage and task. The models' vertex counts double.
 - `venorn-game-client/` gains the scene around the structure, shadows and the wind sound.
-- An exported asset set grows from 10 MB to 16 MB.
+- An exported asset set grows from 10 MB to 20 MB.
 
 ## Citations
 
