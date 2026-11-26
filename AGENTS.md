@@ -19,5 +19,5 @@ venorn is a browser game about adorning a skull in a meadow. `README.md` describ
 
 - Source images are declared by URL and checksum in `venorn-asset-pipeline/sources/<name>/source.toml`. The pipeline downloads them into `venorn-asset-pipeline/.cache/`, which git ignores.
 - The pipeline writes its output to `venorn-asset-pipeline/build/` and exports finished asset sets to `venorn-game-client/public/assets/`. Git ignores both directories.
-- Each pipeline stage writes a picture for a person to check: `catalog/overlay.png`, `isolated/sheet.png`, `layers/check.png` and `layers/plants.png` under `build/<source>/`. Look at them after changing a stage.
+- Each pipeline stage writes a picture for a person to check: `catalog/overlay.png`, `isolated/sheet.png`, `layers/check.png`, `layers/joins.png` and `layers/plants.png` under `build/<source>/`. Look at them after changing a stage.
 - A browser stops drawing a page it is not showing. To check the viewer from a script, call `window.venorn.hold(true)` to stop the page drawing by itself, then `window.venorn.draw(seconds)` for each frame, and read the canvas.

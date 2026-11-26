@@ -200,3 +200,46 @@ def test_top_edge_dips_where_the_layer_has_a_gap():
     assert [row for _, row in edge][:2] == [30, 30]
     assert edge[3][1] == 70
     assert [row for _, row in edge][-2:] == [40, 40]
+
+
+def test_joined_ends_of_a_repeating_pattern_leave_one_period():
+    """A pattern that repeats every 60 columns, in a picture 80 columns wide."""
+    rgba = np.zeros((30, 80, 4), dtype=np.uint8)
+    rgba[..., 0] = (np.arange(80) % 60) * 4
+    rgba[..., 3] = 255
+
+    joined, _ = layers.join_ends(rgba, 20)
+
+    assert joined.shape == (30, 60, 4)
+    assert np.array_equal(joined, rgba[:, :60])
+
+
+def test_join_follows_the_column_where_the_ends_agree():
+    """The two ends differ everywhere but in one column."""
+    rgba = np.random.default_rng(3).integers(0, 255, size=(40, 100, 4)).astype(np.uint8)
+    rgba[..., 3] = 255
+    rgba[:, 87] = rgba[:, 7]
+
+    joined, path = layers.join_ends(rgba, 20)
+
+    assert (path == 7).all()
+    # Left of the path the picture carries on from its right end. Right of it, the start shows.
+    assert np.array_equal(joined[:, :3], rgba[:, 80:83])
+    assert np.array_equal(joined[:, 12:], rgba[:, 12:80])
+
+
+def test_join_ignores_the_colors_of_transparent_pixels():
+    """Random colors everywhere, opaque only in the bottom rows, where the ends agree in one column."""
+    rgba = np.random.default_rng(5).integers(0, 255, size=(40, 100, 4)).astype(np.uint8)
+    rgba[..., 3] = 0
+    rgba[30:, :, 3] = 255
+    rgba[30:, 92] = rgba[30:, 12]
+
+    _, path = layers.join_ends(rgba, 20)
+
+    assert (path[30:] == 12).all()
+
+
+def test_join_needs_room_for_its_overlap():
+    with pytest.raises(ValueError):
+        layers.join_ends(np.zeros((10, 30, 4), dtype=np.uint8), 15)

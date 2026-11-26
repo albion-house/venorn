@@ -66,12 +66,14 @@ interface Ring {
   // The angle the first copy starts at, and how much larger than the image the picture is drawn.
   start: number;
   grow: number;
+  mirrored: boolean;
 }
 
 /**
  * Wrap one layer's picture around the scene. The picture repeats around the
- * circle, every second copy mirrored so the copies join. One copy faces the
- * front view at the size and place it has in the source image.
+ * circle as it is when its ends join, and otherwise with every second copy
+ * mirrored so the copies join. One copy faces the front view at the size and
+ * place it has in the source image.
  */
 function buildRing(
   layer: Layer,
@@ -83,12 +85,15 @@ function buildRing(
   // The ring is seen from inside. A picture that far away has to be larger to look the size it is in the image.
   const grow = (viewDistance + radius) / viewDistance;
   const width = (layer.right - layer.left) * structureSize * grow;
-  const copies = Math.max(2, 2 * Math.round(TURN / (width / radius) / 2));
+  const mirrored = layer.repeat !== "plain";
+  // Mirrored copies come in pairs.
+  const pair = mirrored ? 2 : 1;
+  const copies = Math.max(2, pair * Math.round(TURN / (width / radius) / pair));
   const middle = ((layer.left + layer.right) / 2) * structureSize * grow;
   const start = Math.PI + middle / radius - TURN / copies / 2;
 
   texture.colorSpace = THREE.SRGBColorSpace;
-  texture.wrapS = THREE.MirroredRepeatWrapping;
+  texture.wrapS = mirrored ? THREE.MirroredRepeatWrapping : THREE.RepeatWrapping;
   texture.repeat.x = copies;
   texture.anisotropy = 8;
 
@@ -105,7 +110,7 @@ function buildRing(
   mesh.position.y = ((layer.top + layer.bottom) / 2) * structureSize * grow;
   // Seen from inside, a ring shows its picture mirrored, so it is flipped back.
   mesh.scale.x = -1;
-  return { mesh, material, radius, copies, start, grow };
+  return { mesh, material, radius, copies, start, grow, mirrored };
 }
 
 /**
@@ -202,7 +207,7 @@ function findGaps(layer: Layer, ring: Ring, structureSize: number): Gap[] {
   const across = (edge[best][0] - layer.left) / (layer.right - layer.left);
   const gaps: Gap[] = [];
   for (let copy = 0; copy < ring.copies; copy++) {
-    const within = copy % 2 === 0 ? across : 1 - across;
+    const within = ring.mirrored && copy % 2 === 1 ? 1 - across : across;
     gaps.push({
       // The ring is flipped, so its angles run the other way around the scene.
       angle: -(ring.start + ((copy + within) * TURN) / ring.copies),

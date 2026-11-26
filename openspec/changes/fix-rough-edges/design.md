@@ -51,7 +51,8 @@ This was done in the pipeline because the pipeline makes the layer pictures and 
 ## Risks / Trade-offs
 
 - Each copy of the forest and the meadow is a fifth narrower, so there are more copies around the scene: 15 of the forest in place of 12. They repeat without mirroring, which is harder to see.
-- Where the two ends of a picture differ everywhere along the path, the join shows as a soft seam a few pixels wide.
+- Where the two ends of a picture differ everywhere along the path, the join shows as a soft seam a few pixels wide. In the forest it shows as a soft slanting edge in the lower half.
+- The pale patches in the lower forest, where the skull was painted out, fall in other places around the scene. With the camera turned 20° to the left, one shows beside the skull above the meadow.
 - A color between dark and bright is partly turned, which mixes it toward grey.
 - The rabbit is darker with the sun behind it, as the plants are.
 

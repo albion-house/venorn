@@ -11,6 +11,11 @@ from .criteria import validate
 from .source import Source
 
 
+def _repeat(layer: dict) -> dict:
+    """A layer whose ends join repeats as it is. Any other repeats with every second copy mirrored."""
+    return {"repeat": layer["repeat"]} if "repeat" in layer else {}
+
+
 def client_assets_dir(source: Source) -> Path:
     override = os.environ.get("VENORN_ASSETS_EXPORT_DIR")
     base = Path(override) if override else source.root.parent / "venorn-game-client" / "public" / "assets"
@@ -104,6 +109,7 @@ def export(source: Source) -> None:
                     "motion": layer["motion"],
                     # The layer's top edge, as points across the image.
                     "skyline": [[across(column), upward(row)] for column, row in layer.get("skyline", [])],
+                    **_repeat(layer),
                 }
                 for layer in found["layers"]
             ],
@@ -121,6 +127,7 @@ def export(source: Source) -> None:
                     "right": across(found["ground"]["cutout"]["box"][2]),
                     "top": upward(found["ground"]["cutout"]["box"][1]),
                     "bottom": upward(found["ground"]["cutout"]["box"][3]),
+                    **_repeat(found["ground"]["cutout"]),
                 },
                 "plants": [
                     {
