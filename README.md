@@ -32,7 +32,7 @@ mise //venorn-asset-pipeline:build
 # Open the scene in a browser and pin things to the skull
 mise //venorn-game-client:dev
 
-# Build the client and serve it to a phone on the same network
+# Build the client and serve it to a phone, over Tailscale or the local network
 mise //venorn-game-client:phone
 
 # Lint, test and type-check every project, and validate the OpenSpec changes
@@ -41,7 +41,24 @@ mise //:check
 
 The pipeline downloads about 3 GB of model weights from Hugging Face the first time it runs.
 
-The `phone` task prints the addresses to open. It serves the built site, so run it again after a change. Any device on the same network can open the page while the task runs.
+The `phone` task prints the addresses to open. It serves the built site, so run it again after a change.
+
+## On a phone
+
+A phone on the same local network as this Mac can open the addresses the `phone` task prints under "local network". Some networks keep the devices on them apart, and campus and office networks often do. On such a network the page never loads, and Tailscale is the way through. `albion-house/killbox` reaches its multiplayer server the same way.
+
+Set Tailscale up once:
+
+1. On this Mac, turn Tailscale on from its menu bar icon, or run `tailscale up`.
+2. On the phone, install Tailscale from the App Store. Open it, choose "Get Started", accept the prompt to install a VPN configuration, and log in with the same account as this Mac.
+3. In the Tailscale app on the phone, check that this Mac is listed and the switch is on.
+
+Then, each time:
+
+1. Run `mise //venorn-game-client:phone`.
+2. On the phone, open the address the task prints under "Tailscale".
+
+`tailscale status` on this Mac lists the devices in the tailnet and says which are connected.
 
 ## In the viewer
 
