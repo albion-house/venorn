@@ -1,11 +1,41 @@
 #!/usr/bin/env bash
-#MISE description="Build the client and serve it to phones on the same network"
+#MISE description="Build the client and serve it to a phone, over Tailscale or the local network"
 #MISE depends=[":build"]
 #MISE dir="{{config_root}}"
 #USAGE flag "--port <port>" help="Port to serve on" default="5190"
 set -euo pipefail
 
 # Only the built site in dist/ is served. The live-reload server stays on this Mac.
-echo "Open one of these on a phone that is on the same network as this Mac:"
-ifconfig | awk -v port="${usage_port}" '/inet / && $2 != "127.0.0.1" { print "  http://" $2 ":" port "/" }'
-exec vite preview --host --port "${usage_port}" --strictPort
+port="${usage_port}"
+
+# This Mac's name and address in its tailnet, when Tailscale is running here.
+tailnet=""
+if command -v tailscale >/dev/null 2>&1; then
+  tailnet="$(tailscale status --json 2>/dev/null | node -e '
+    let text = "";
+    process.stdin.on("data", (chunk) => (text += chunk)).on("end", () => {
+      const status = JSON.parse(text);
+      if (status.BackendState !== "Running") return;
+      const name = (status.Self.DNSName ?? "").replace(/\.$/, "");
+      const address = (status.Self.TailscaleIPs ?? []).find((ip) => !ip.includes(":")) ?? "";
+      console.log(`${name} ${address}`);
+    });
+  ' 2>/dev/null || true)"
+fi
+read -r name address <<<"${tailnet}"
+
+if [[ -n "${address}" ]]; then
+  echo "On a phone that has Tailscale running in the same tailnet as this Mac, open:"
+  echo "  http://${address}:${port}/"
+  [[ -n "${name}" ]] && echo "  http://${name}:${port}/"
+  # Vite answers only requests that name a host it knows, so it is told this Mac's Tailscale names.
+  export VENORN_ALLOWED_HOSTS="${name},${name%%.*}"
+else
+  echo "Tailscale is not running on this Mac. A phone on another network, or on a network that"
+  echo "keeps devices apart, reaches the game over Tailscale: see \"On a phone\" in the README."
+fi
+
+echo "On a phone on the same local network as this Mac, open one of:"
+ifconfig | awk -v port="${port}" -v tailnet="${address}" \
+  '/inet / && $2 != "127.0.0.1" && $2 != tailnet { print "  http://" $2 ":" port "/" }'
+exec vite preview --host --port "${port}" --strictPort
