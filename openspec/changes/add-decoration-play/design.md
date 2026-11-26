@@ -66,17 +66,11 @@ The color adjustment turns a model's colors around the gray axis in the fragment
 
 ## Resolved Questions
 
-None.
-
-## Open Questions
-
 ### 1 - Where should generated models be stored?
 
-> Context from the drafting agent, for question 1.
->
-> Git ignores the exported asset sets today, so a clone runs the pipeline to get them. One export of the painting is now 26 MB. GitHub Pages can only serve files that are in the deployed site, so publishing needs the models in git, in git LFS, or copied in by the deploy workflow from storage outside the repository.
+In GitHub releases, one for each exported asset set, and not in git or git LFS. `venorn-game-client/mise.toml` names the release the GitHub Pages site is built with. codekiln asked on 2026-11-26 for the game to be deployed with a sensible approach and left the choice to the drafting agent. `openspec/changes/publish-on-pages/` has the reasons.
 
-<ANSWER_HERE>
+## Open Questions
 
 ### 2 - Should the game stay on three.js used directly?
 
