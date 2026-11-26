@@ -14,6 +14,16 @@
 
 ## MODIFIED Requirements
 
+### Requirement: Arrangement from the painting
+
+The viewer SHALL place a model at every position in the manifest's arrangement, sized and turned as the arrangement records, and SHALL place its mirror image at the matching position on the far side of the structure.
+
+#### Scenario: Skull is arranged as painted
+
+- **WHEN** a person presses "Arrange as painted"
+- **THEN** one thing appears on the near side of the skull for each entry in the arrangement
+- **AND** its mirror image appears on the far side
+
 ### Requirement: Pinning with a tap
 
 A tap or click on the structure SHALL pin the model chosen in the tray at that spot, on any side of the structure, at its natural size, facing along the surface. A pinned thing SHALL stand off the surface on its pin and cast a shadow. A pin sound SHALL play, and the pin head of a pinned thing SHALL throb.
@@ -73,12 +83,17 @@ A thing whose wrap is at its fullest SHALL lie on the surface of the structure a
 
 ### Requirement: Free camera
 
-The camera SHALL turn all the way around the structure and up over it. It SHALL zoom in toward the point under the pointer until a single pinned thing fills the view, and SHALL pan. A "Front view" control SHALL return it to the view of the painting.
+The camera SHALL turn all the way around the structure and up over it. It SHALL zoom in toward the point under the pointer until a single pinned thing fills the view, and SHALL pan. A "Front view" control SHALL return it to the view of the painting, and a "Rear view" control SHALL show the far side straight on.
 
 #### Scenario: Person turns to the far side
 
 - **WHEN** a person drags sideways until the camera has turned half way around
 - **THEN** the far side of the skull is in view
+
+#### Scenario: Person asks for the rear view
+
+- **WHEN** a person presses "Rear view"
+- **THEN** the camera looks straight at the far side of the skull from the front view's distance
 
 #### Scenario: Person zooms in
 
@@ -160,19 +175,40 @@ The structure SHALL sit in a thicket of the ground's plants, each a flat cutout 
 
 ### Requirement: Living scene
 
-The floating layer SHALL drift slowly around the scene. A sun SHALL circle the sky, and the light and the shadows SHALL follow it. Birds SHALL fly behind the far layer. A "Cloud sound" control SHALL switch a quiet wind on and off.
+The floating layer SHALL drift slowly around the scene while its parts flow their own ways, so its shapes change. A sun SHALL circle the sky, and the light and the shadows SHALL follow it. Now and then a flock of birds SHALL cross a gap between the masses of the far layer, calling as it goes. A wind SHALL sound from the first tap, click or key press, louder in the meadow's gusts. A "Sound" control SHALL switch every sound off and on.
 
 #### Scenario: Clouds drift
 
 - **WHEN** a minute passes
 - **THEN** the clouds have moved sideways against the forest
 
+#### Scenario: Clouds slither
+
+- **WHEN** the clouds have come back around to the same place
+- **THEN** their shapes differ from the last time they were there
+
 #### Scenario: Shadows follow the sun
 
 - **WHEN** the sun has moved
 - **THEN** the shadows of the skull and of the pinned things have moved with it
 
-#### Scenario: Cloud sound is switched on
+#### Scenario: Birds cross the gap
 
-- **WHEN** a person ticks "Cloud sound"
-- **THEN** a quiet wind fades in
+- **WHEN** a flock sets out
+- **THEN** it comes out from behind one mass of the far layer, crosses the gap nearest to where the camera looks, and goes behind the next mass
+- **AND** its calls are heard from the side of the view the flock is on
+
+#### Scenario: Flocks come now and then
+
+- **WHEN** a flock has crossed
+- **THEN** the next one sets out between 22 and 52 seconds later
+
+#### Scenario: Wind starts with the first tap
+
+- **WHEN** a person first taps or clicks the page
+- **THEN** the wind starts, and it rises and falls with the gusts that move the plants
+
+#### Scenario: Sound is switched off
+
+- **WHEN** a person unticks "Sound"
+- **THEN** the wind, the bird calls and the pin sounds go quiet

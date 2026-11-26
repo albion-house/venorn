@@ -73,6 +73,8 @@ def export(source: Source) -> None:
                     "bottom": upward(layer["box"][3]),
                     "distance": layer["distance"],
                     "motion": layer["motion"],
+                    # The layer's top edge, as points across the image.
+                    "skyline": [[across(column), upward(row)] for column, row in layer.get("skyline", [])],
                 }
                 for layer in found["layers"]
             ],

@@ -19,7 +19,6 @@ The work stays on this Mac, an M2 Pro with 16 GB of memory, with no API key.
 
 - Models made by a generative image-to-3D model. Open question 1 covers what running one on this Mac needs.
 - Cutouts redrawn at higher resolution before they are lifted.
-- Clouds that change shape as they drift.
 - Plants with depth of their own. Each plant is a flat cutout.
 
 ## Decisions
@@ -67,7 +66,27 @@ Each layer's picture is wrapped around the scene on a cylinder and repeated, wit
 - The sky is a dome painted with the backdrop's gradient.
 - The meadow is described under "A meadow of cut paper".
 
-The clouds' ring turns once in 25 minutes. A sun circles the sky once in 10 minutes and the scene's light follows it. Five birds circle behind the forest. A looped, filtered noise makes the wind, which a browser lets play only after a tap or click.
+The clouds' ring turns once in 25 minutes. A sun circles the sky once in 10 minutes and the scene's light follows it.
+
+### Clouds that slither
+
+codekiln asked for organic changes in the clouds, so they slither differently from one another. The cloud picture is read through a slow, smooth flow field. Each part of the sky is pulled its own way by up to 4% of the picture's width, and a finer, quicker field adds a small wobble. The field joins up with itself around the ring. After the ring has turned by two copies of the picture, a tenth of the sky's pixels differ from the last time.
+
+The image cuts some clouds off at its top edge. They fade out there.
+
+### Birds through the gap
+
+The pipeline records the forest's top edge in the manifest. The viewer finds its deepest dip, which is the pink valley between the two tree masses, once for each copy of the forest around the ring. A flock of six birds flies just behind the forest, level with the lower part of the dip, so it shows only while it crosses the gap. Each flock crosses the gap nearest to where the camera is looking, in 13 seconds, and the next sets out 22 to 52 seconds later. The first sets out five seconds after the page opens.
+
+A flock calls four times as it crosses. A call is two or three short falling notes with a faint echo, placed left or right by where the flock is in the view.
+
+### Wind you can hear
+
+The wind is one loop of noise heard through three filters: a low rush, the breath of moving air, and leaves. The meadow's gust strength sets all three, so the sound rises as the plants lean. A browser allows sound only after a tap, a click or a key press, so the wind starts with the first one. "Sound" switches every sound off and on.
+
+### Both sides of the skull
+
+"Rear view" looks straight at the far side. "Arrange as painted" pins each thing on the near side and its mirror image on the far side, flipped and turned the other way.
 
 ### A meadow of cut paper
 
@@ -99,6 +118,7 @@ A thing that the skull hides from the camera cannot be selected or removed throu
 - The rule that cuts the meadow from its base assumes a dark green base. → Another painting may need another rule.
 - The layer rules assume a blue floating layer and a far layer of one hue range. → Another painting may need other rules.
 - A phone is untested. The gestures were checked with scripted mouse and touch events in a desktop browser.
+- Nobody has listened to the wind or the bird calls. They were checked by counting the calls and by the page raising no errors.
 
 ## Resolved Questions
 

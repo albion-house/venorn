@@ -46,7 +46,11 @@ function random(seed: number): () => number {
   };
 }
 
+// Gusts come and go at this pace, in radians a second. The wind's sound follows the same pace.
+const GUST_PACE = 0.31;
+
 const SWAY_VERTEX = /* glsl */ `
+  #define GUST_PACE ${GUST_PACE}
   vec3 transformed = vec3(position);
   float paperHeight = uv.y;
   #ifdef USE_INSTANCING
@@ -67,7 +71,7 @@ const SWAY_VERTEX = /* glsl */ `
   #endif
   // Gusts travel across the meadow, and each plant swings in its own time.
   float paperAlong = dot(paperOrigin.xz, uWind);
-  float paperGust = 0.55 + 0.45 * sin(uTime * 0.31 + paperAlong * 0.22);
+  float paperGust = 0.55 + 0.45 * sin(uTime * GUST_PACE + paperAlong * 0.22);
   float paperSwing = paperHeight * paperHeight * paperGust
     * (sin(uTime * 1.25 + paperAlong * 0.9 + paperSeed * 6.283) + 0.35 * sin(uTime * 2.9 + paperSeed * 40.0));
   vec3 paperPush = vec3(uWind.x, 0.0, uWind.y) * paperSwing * uSway;
@@ -175,6 +179,11 @@ class Paper {
     };
     return { paper, shadow };
   }
+}
+
+/** How hard the wind blows at the middle of the scene: 0 between gusts, 1 at the height of one. */
+export function gustAt(seconds: number): number {
+  return 0.5 + 0.5 * Math.sin(seconds * GUST_PACE);
 }
 
 /** The ground: flat under the structure, then falling away on every side. */
