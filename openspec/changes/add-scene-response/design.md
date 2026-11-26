@@ -48,11 +48,28 @@ It starts in the hollow on the camera's side of the structure, looks around for 
 
 The first rabbit comes with the sixth thing. After that, placing a thing brings one with a chance of 0.3, no sooner than 100 seconds after the last.
 
+### Music
+
+The music follows the way Brian Eno built "Music for Airports": single notes on loops of different lengths, so the pattern never quite repeats. Each thing has a loop of 11 to 28 seconds. With more than 14 things, every loop is stretched by the same factor, so the music stays sparse however many things there are. At most 16 notes ring at once.
+
+A thing's note comes from the D major pentatonic scale. Its height on the structure picks the note, and its place moves it up by as much as two steps. Its category picks one of five voices made from a few oscillators: air, bell, mallet, glass and pad. A drone on D and A lies under the notes.
+
+Each note passes through a panner at the thing's place, with the listener at the camera. A note is at full strength within 2.2 world units and falls away with distance, so from the front view a note is about a fifth as strong as from close by. All notes share one echo, made from five seconds of fading noise, and a limiter.
+
+The music's level is lushness raised to the power 0.6, so the first few things can already be heard.
+
+The draw loop's clock decides when a note is due, and the audio clock only places the note. The things swell and the lines draw even when the sound is off or the browser has not yet allowed sound.
+
+### Lines between things
+
+A line is drawn from the thing that sounded before to the thing that sounds now, as a curve that arcs away from the surface. It draws itself in 0.9 seconds and fades over 3.4. Eight lines can show at once.
+
 ## Risks / Trade-offs
 
 - A new game shows a nearly bare ground. The first few things have little effect on the meadow, because each plant waits for its turn.
 - The horn's score from the detector is low. Another painting may need another prompt, or a feature may be left out, in which case its surprise does not happen.
 - The rabbit is unlit, so it stays pale at dusk.
+- Nobody has listened to the music yet. Its levels were set from numbers: a rendered note's loudness near and far, and against the drone.
 
 ## Resolved Questions
 

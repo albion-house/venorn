@@ -87,6 +87,9 @@ export function createPlaced(
 /** A copy of a model's material whose colors can be turned around the color wheel. */
 function tinted(base: THREE.MeshStandardMaterial, tint: { value: number }): THREE.MeshStandardMaterial {
   const material = base.clone();
+  // The thing glows in this color while its note sounds.
+  material.emissive.set(0xffdca8);
+  material.emissiveIntensity = 0;
   material.onBeforeCompile = (shader) => {
     shader.uniforms.uTint = tint;
     shader.fragmentShader = shader.fragmentShader
@@ -194,6 +197,14 @@ export function applySettings(placed: Placed, structure: THREE.Mesh, structureSi
     placed.pinStem.scale.set(1, reach, 1);
     placed.pinStem.quaternion.setFromUnitVectors(WORLD_UP, lean);
   }
+}
+
+/** Swell a thing about the spot it sits on and make it glow. amount runs from 0 to 1. */
+export function swell(placed: Placed, amount: number): void {
+  const grown = 1 + 0.14 * amount;
+  placed.group.scale.setScalar(grown);
+  placed.group.position.copy(placed.point).multiplyScalar(1 - grown);
+  (placed.mesh.material as THREE.MeshStandardMaterial).emissiveIntensity = 0.3 * amount;
 }
 
 /** A pin throbs for a few seconds after it goes in, then keeps a slow pulse. */

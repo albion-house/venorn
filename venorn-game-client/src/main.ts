@@ -3,10 +3,12 @@ import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { MeshBVH, acceleratedRaycast } from "three-mesh-bvh";
 import { watchGestures, type Hit } from "./gestures";
-import { applySettings, createPlaced, defaultSettings, throb, type Placed } from "./placement";
+import { buildLinks, type Links } from "./links";
+import { createMusic, type Music } from "./music";
+import { applySettings, createPlaced, defaultSettings, swell, throb, type Placed } from "./placement";
 import { buildMeadow, gustAt, type Meadow } from "./meadow";
 import { buildSurroundings, type Surroundings } from "./scene";
-import { playBirdCall, playGlitter, playPin, playRemove, setGust, setSound, startWind } from "./sound";
+import { bus, playBirdCall, playGlitter, playPin, playRemove, setGust, setSound, startWind } from "./sound";
 import { buildSurprises, SPEW_SECONDS, type Surprises } from "./surprises";
 import type { Criteria, Manifest, Range, Settings } from "./types";
 import * as ui from "./ui";
@@ -73,12 +75,20 @@ const raycaster = new THREE.Raycaster();
 raycaster.firstHitOnly = true;
 const loader = new GLTFLoader();
 const models = new Map<string, Loaded>();
-const placed: { thing: Placed; pinnedAt: number }[] = [];
+// soundedAt and rings say when the thing's note last began and how long it rings, in the draw loop's seconds.
+const placed: { thing: Placed; pinnedAt: number; soundedAt: number; rings: number }[] = [];
 let structure: THREE.Mesh;
 let manifest: Manifest;
 let surroundings: Surroundings | undefined;
 let meadow: Meadow | undefined;
 let surprises: Surprises | undefined;
+let music: Music | undefined;
+let links: Links | undefined;
+// The thing whose note sounded last. The next note's line starts from it.
+let lastSounded: (typeof placed)[number] | undefined;
+// The lowest and highest points of the structure, for turning a thing's height into a pitch.
+let low = 0;
+let high = 1;
 // How lush the scene is, from 0 at the start to 1, and the last moment that was drawn.
 let lush = 0;
 let clock = 0;
@@ -181,7 +191,7 @@ function pin(id: string, point: THREE.Vector3, normal: THREE.Vector3, settings?:
   Object.assign(thing.settings, settings);
   applySettings(thing, structure, STRUCTURE_SIZE);
   scene.add(thing.group);
-  placed.push({ thing, pinnedAt: performance.now() / 1000 });
+  placed.push({ thing, pinnedAt: performance.now() / 1000, soundedAt: -Infinity, rings: 1 });
   return thing;
 }
 
@@ -270,6 +280,44 @@ function turnThing(thing: Placed, degrees: number): void {
   if (span >= 360) spin = range.min + ((((spin - range.min) % span) + span) % span);
   thing.settings.spin = clamp(spin, range);
   reshape(thing);
+}
+
+/**
+ * Let the placed things play: each one's note comes around on its own loop, the
+ * thing swells and glows as it sounds, and a line joins it to the one before.
+ */
+function playMusic(seconds: number): void {
+  const audio = bus();
+  if (audio && !music) music = createMusic(audio.context, audio.master);
+  // The music comes in sooner than the meadow grows, so the first few things can be heard.
+  const sounded =
+    music?.update(
+      seconds,
+      placed.map((entry) => ({
+        key: entry,
+        position: entry.thing.point,
+        timbre: homes.get(entry.thing.criteria.id)!.category,
+        height: (entry.thing.point.y - low) / (high - low),
+      })),
+      lush ** 0.6,
+      camera,
+    ) ?? [];
+  for (const note of sounded) {
+    const entry = note.key as (typeof placed)[number];
+    entry.soundedAt = seconds;
+    entry.rings = note.seconds;
+    if (lastSounded && lastSounded !== entry && placed.includes(lastSounded)) {
+      links?.connect(lastSounded.thing, entry.thing, seconds);
+    }
+    lastSounded = entry;
+  }
+  for (const entry of placed) {
+    // A quick swell as the note begins, dying away as it rings.
+    const since = seconds - entry.soundedAt;
+    const amount = since < 0 || since > entry.rings ? 0 : Math.min(1, since / 0.15) * (1 - since / entry.rings) ** 2;
+    swell(entry.thing, amount);
+  }
+  links?.update(seconds, renderer.domElement.width, renderer.domElement.height);
 }
 
 /** How lush the scene is on its way to being, from the number of things on the structure. */
@@ -520,6 +568,11 @@ async function start(): Promise<void> {
     reach: (surroundings?.outerRadius ?? VIEW_DISTANCE * 3) * 0.6,
   });
   scene.add(surprises.group);
+  links = buildLinks(STRUCTURE_SIZE);
+  scene.add(links.group);
+  const bounds = new THREE.Box3().setFromObject(structure);
+  low = bounds.min.y;
+  high = bounds.max.y;
 
   ui.buildDock(categories, chooseCategory);
   show(0);
@@ -607,6 +660,7 @@ async function start(): Promise<void> {
     surroundings?.update(seconds, camera);
     meadow?.update(seconds);
     surprises?.update(seconds, camera, renderer.domElement.height);
+    playMusic(seconds);
     setGust(gustAt(seconds));
     controls.target.clamp(farthest, reach);
     controls.update();
@@ -632,7 +686,9 @@ async function start(): Promise<void> {
       select,
       state: () => ({ category, variation, selected, wheelOpen, designOpen, onScreen, lush, rowBest, rabbits }),
       surprises,
+      links,
       sendRabbit,
+      sounding: () => placed.filter((entry) => clock - entry.soundedAt < entry.rings).length,
       hold: (on: boolean) => {
         held = on;
       },
