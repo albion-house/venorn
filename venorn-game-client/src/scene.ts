@@ -10,13 +10,17 @@ export interface Surroundings {
   /** How near and how far the layers wrapped around the scene stand from the middle. */
   innerRadius: number;
   outerRadius: number;
-  update(seconds: number): void;
+  update(seconds: number, camera: THREE.Camera): void;
 }
 
 // The sun goes once around the sky in this many seconds.
 const DAY = 600;
 // The floating layer goes once around the scene in this many seconds.
 const DRIFT = 1500;
+// A flock crosses a gap in the far layer in this many seconds.
+const CROSSING = 13;
+// Seconds between one flock and the next: at least the first number, at most the sum.
+const QUIET: [number, number] = [22, 30];
 const TURN = Math.PI * 2;
 
 /** Elevation in radians of a height on the structure's plane, as seen from the front view. */
@@ -50,6 +54,16 @@ function buildSky(scene: SceneLayers, structureSize: number, viewDistance: numbe
   return dome;
 }
 
+interface Ring {
+  mesh: THREE.Mesh;
+  material: THREE.MeshBasicMaterial;
+  radius: number;
+  copies: number;
+  // The angle the first copy starts at, and how much larger than the image the picture is drawn.
+  start: number;
+  grow: number;
+}
+
 /**
  * Wrap one layer's picture around the scene. The picture repeats around the
  * circle, every second copy mirrored so the copies join. One copy faces the
@@ -61,13 +75,13 @@ function buildRing(
   radius: number,
   structureSize: number,
   viewDistance: number,
-): THREE.Mesh {
+): Ring {
   // The ring is seen from inside. A picture that far away has to be larger to look the size it is in the image.
   const grow = (viewDistance + radius) / viewDistance;
   const width = (layer.right - layer.left) * structureSize * grow;
   const copies = Math.max(2, 2 * Math.round(TURN / (width / radius) / 2));
   const middle = ((layer.left + layer.right) / 2) * structureSize * grow;
-  const facing = Math.PI + middle / radius;
+  const start = Math.PI + middle / radius - TURN / copies / 2;
 
   texture.colorSpace = THREE.SRGBColorSpace;
   texture.wrapS = THREE.MirroredRepeatWrapping;
@@ -75,7 +89,7 @@ function buildRing(
   texture.anisotropy = 8;
 
   const height = (layer.top - layer.bottom) * structureSize * grow;
-  const geometry = new THREE.CylinderGeometry(radius, radius, height, copies * 24, 1, true, facing - TURN / copies / 2);
+  const geometry = new THREE.CylinderGeometry(radius, radius, height, copies * 24, 1, true, start);
   const material = new THREE.MeshBasicMaterial({
     map: texture,
     side: THREE.DoubleSide,
@@ -83,11 +97,58 @@ function buildRing(
     transparent: true,
     depthWrite: false,
   });
-  const ring = new THREE.Mesh(geometry, material);
-  ring.position.y = ((layer.top + layer.bottom) / 2) * structureSize * grow;
+  const mesh = new THREE.Mesh(geometry, material);
+  mesh.position.y = ((layer.top + layer.bottom) / 2) * structureSize * grow;
   // Seen from inside, a ring shows its picture mirrored, so it is flipped back.
-  ring.scale.x = -1;
-  return ring;
+  mesh.scale.x = -1;
+  return { mesh, material, radius, copies, start, grow };
+}
+
+/**
+ * Make a layer's picture flow. Each part of the picture is pulled its own way
+ * by a slow, smooth field, so neighboring clouds slither differently.
+ */
+function slither(ring: Ring, time: { value: number }): void {
+  ring.material.onBeforeCompile = (shader) => {
+    shader.uniforms.uTime = time;
+    shader.uniforms.uAround = { value: ring.copies * 2 };
+    shader.fragmentShader = shader.fragmentShader
+      .replace(
+        "#include <common>",
+        /* glsl */ `#include <common>
+        uniform float uTime;
+        uniform float uAround;
+        // Smooth noise that joins up with itself once around the ring.
+        float flowNoise(vec2 point, float around) {
+          vec2 cell = floor(point);
+          vec2 blend = fract(point);
+          blend = blend * blend * (3.0 - 2.0 * blend);
+          vec2 next = cell + 1.0;
+          cell.x = mod(cell.x, around);
+          next.x = mod(next.x, around);
+          float a = fract(sin(dot(cell, vec2(127.1, 311.7))) * 43758.5453);
+          float b = fract(sin(dot(vec2(next.x, cell.y), vec2(127.1, 311.7))) * 43758.5453);
+          float c = fract(sin(dot(vec2(cell.x, next.y), vec2(127.1, 311.7))) * 43758.5453);
+          float d = fract(sin(dot(next, vec2(127.1, 311.7))) * 43758.5453);
+          return mix(mix(a, b, blend.x), mix(c, d, blend.x), blend.y);
+        }`,
+      )
+      .replace(
+        "#include <map_fragment>",
+        /* glsl */ `
+        vec2 flowAt = vMapUv * vec2(2.0, 2.6);
+        vec2 slow = vec2(
+          flowNoise(flowAt + vec2(uTime * 0.021, uTime * 0.013), uAround),
+          flowNoise(flowAt + vec2(31.0 - uTime * 0.017, 12.3 + uTime * 0.011), uAround)) - 0.5;
+        vec2 quick = vec2(
+          flowNoise(flowAt * 3.0 + vec2(uTime * 0.06, 0.0), uAround * 3.0),
+          flowNoise(flowAt * 3.0 + vec2(7.0, uTime * 0.05), uAround * 3.0)) - 0.5;
+        vec4 sampledDiffuseColor = texture2D(map, vMapUv + slow * vec2(0.085, 0.04) + quick * vec2(0.014, 0.009));
+        // The picture ends at the top of the image, so what the image cut off fades out there.
+        sampledDiffuseColor.a *= smoothstep(1.0, 0.93, vMapUv.y);
+        diffuseColor *= sampledDiffuseColor;`,
+      );
+  };
 }
 
 function buildSunDisc(): THREE.Sprite {
@@ -109,37 +170,91 @@ function buildSunDisc(): THREE.Sprite {
   return disc;
 }
 
+/** A gap between two masses of the far layer: its direction from the middle of the scene, its floor and its rim. */
+interface Gap {
+  angle: number;
+  floor: number;
+  rim: number;
+}
+
+/** Find the deepest dip in the far layer's top edge, once for each copy of the picture around the ring. */
+function findGaps(layer: Layer, ring: Ring, structureSize: number): Gap[] {
+  const edge = layer.skyline ?? [];
+  if (edge.length < 3) return [];
+  let best = 0;
+  let depth = -Infinity;
+  let rim = 0;
+  for (let i = 1; i < edge.length - 1; i++) {
+    const left = Math.max(...edge.slice(0, i).map((point) => point[1]));
+    const right = Math.max(...edge.slice(i + 1).map((point) => point[1]));
+    const lower = Math.min(left, right);
+    if (lower - edge[i][1] > depth) {
+      depth = lower - edge[i][1];
+      best = i;
+      rim = lower;
+    }
+  }
+  if (depth <= 0) return [];
+  const across = (edge[best][0] - layer.left) / (layer.right - layer.left);
+  const gaps: Gap[] = [];
+  for (let copy = 0; copy < ring.copies; copy++) {
+    const within = copy % 2 === 0 ? across : 1 - across;
+    gaps.push({
+      // The ring is flipped, so its angles run the other way around the scene.
+      angle: -(ring.start + ((copy + within) * TURN) / ring.copies),
+      floor: edge[best][1] * structureSize * ring.grow,
+      rim: rim * structureSize * ring.grow,
+    });
+  }
+  return gaps;
+}
+
 interface Bird {
   body: THREE.Group;
   wings: [THREE.Mesh, THREE.Mesh];
-  offset: number;
-  height: number;
+  // Where the bird flies in the flock: behind the leader, and above or below it, from -1 to 1.
+  behind: number;
+  level: number;
   beat: number;
 }
 
-/** A small flock that circles the scene behind the far layer. */
-function buildBirds(radius: number): Bird[] {
+function buildBirds(size: number): Bird[] {
   const wing = new THREE.PlaneGeometry(1, 0.28);
   wing.translate(0.5, 0, 0);
   const ink = new THREE.MeshBasicMaterial({ color: 0x1d2433, side: THREE.DoubleSide, fog: false });
-  const birds: Bird[] = [];
-  for (let i = 0; i < 5; i++) {
+  const places: [number, number][] = [
+    [0, 0],
+    [1, 0.5],
+    [1.2, -0.6],
+    [2.1, 0.9],
+    [2.4, -0.2],
+    [3.2, 0.4],
+  ];
+  return places.map(([behind, level], index) => {
     const body = new THREE.Group();
     const left = new THREE.Mesh(wing, ink);
     const right = new THREE.Mesh(wing, ink);
     right.scale.x = -1;
     body.add(left, right);
-    body.scale.setScalar(radius * 0.012);
+    body.scale.setScalar(size);
     body.renderOrder = -8;
-    birds.push({
-      body,
-      wings: [left, right],
-      offset: i * 0.035 + (i % 2) * 0.012,
-      height: radius * (0.2 + 0.025 * ((i * 3) % 5)),
-      beat: 5 + (i % 3),
-    });
-  }
-  return birds;
+    body.visible = false;
+    return { body, wings: [left, right], behind, level, beat: 6 + (index % 3) };
+  });
+}
+
+/** A small, stable random number generator. */
+function random(seed: number): () => number {
+  let state = seed >>> 0;
+  return () => {
+    state = (Math.imul(state, 1664525) + 1013904223) >>> 0;
+    return state / 4294967296;
+  };
+}
+
+export interface SurroundingsOptions {
+  /** Called when a bird calls: where it is across the view, from -1 at the left to 1 at the right. */
+  onBirdCall?: (across: number) => void;
 }
 
 export async function buildSurroundings(
@@ -147,14 +262,17 @@ export async function buildSurroundings(
   assets: string,
   structureSize: number,
   viewDistance: number,
+  options: SurroundingsOptions = {},
 ): Promise<Surroundings> {
   const group = new THREE.Group();
   group.add(buildSky(scene, structureSize, viewDistance));
 
   const loader = new THREE.TextureLoader();
+  const time = { value: 0 };
   let drifting: THREE.Mesh | undefined;
   let innerRadius = Infinity;
   let outerRadius = 0;
+  let gaps: Gap[] = [];
 
   // The ground layer is the meadow's to build. The far and floating layers wrap around the scene.
   const order = { far: -5, floating: -4 };
@@ -163,11 +281,15 @@ export async function buildSurroundings(
     const texture = await loader.loadAsync(assets + layer.image);
     const radius = layer.distance * structureSize;
     const ring = buildRing(layer, texture, radius, structureSize, viewDistance);
-    ring.renderOrder = order[layer.role];
-    group.add(ring);
+    ring.mesh.renderOrder = order[layer.role];
+    group.add(ring.mesh);
     innerRadius = Math.min(innerRadius, radius);
     outerRadius = Math.max(outerRadius, radius);
-    if (layer.motion === "drift") drifting = ring;
+    if (layer.motion === "drift") {
+      drifting = ring.mesh;
+      slither(ring, time);
+    }
+    if (layer.role === "far") gaps = findGaps(layer, ring, structureSize);
   }
 
   const sun = new THREE.DirectionalLight(0xfff1d6, 2.2);
@@ -183,14 +305,73 @@ export async function buildSurroundings(
   const disc = buildSunDisc();
   group.add(disc);
 
-  const birds = buildBirds(outerRadius + 10);
+  // Birds fly just behind the far layer, so they show only where it dips.
+  const flightRadius = outerRadius + 3;
+  const birds = buildBirds(flightRadius * 0.016);
   for (const bird of birds) group.add(bird.body);
+  const next = random(7);
+  let flight: { gap: Gap; from: number; way: number; height: number; calls: number[] } | undefined;
+  let nextFlight = 5;
 
   const high = new THREE.Color(0xfff6e6);
   const low = new THREE.Color(0xffc890);
   const direction = new THREE.Vector3();
+  const looking = new THREE.Vector3();
+  const flock = new THREE.Vector3();
 
-  function update(seconds: number): void {
+  function startFlight(seconds: number, camera: THREE.Camera): void {
+    // The flock crosses the gap nearest to where the camera is looking.
+    camera.getWorldDirection(looking);
+    const facing = Math.atan2(looking.x, looking.z);
+    const turnTo = (angle: number): number => Math.abs(((angle - facing + Math.PI * 3) % TURN) - Math.PI);
+    const gap = gaps.reduce((nearest, candidate) => (turnTo(candidate.angle) < turnTo(nearest.angle) ? candidate : nearest));
+    flight = {
+      gap,
+      from: seconds,
+      way: next() < 0.5 ? -1 : 1,
+      height: gap.floor + (gap.rim - gap.floor) * (0.3 + 0.3 * next()),
+      calls: [0.3, 0.42, 0.55, 0.7].map((at) => at + (next() - 0.5) * 0.08),
+    };
+    for (const bird of birds) bird.body.visible = true;
+  }
+
+  function fly(seconds: number, camera: THREE.Camera): void {
+    if (!flight) {
+      if (gaps.length > 0 && seconds >= nextFlight) startFlight(seconds, camera);
+      return;
+    }
+    const progress = (seconds - flight.from) / CROSSING;
+    if (progress >= 1) {
+      for (const bird of birds) bird.body.visible = false;
+      flight = undefined;
+      nextFlight = seconds + QUIET[0] + QUIET[1] * next();
+      return;
+    }
+    // The flock starts behind one mass of the far layer, crosses the gap, and goes behind the next.
+    const sweep = (TURN / gaps.length) * 0.9;
+    const spacing = birds[0].body.scale.x * 2.4;
+    for (const bird of birds) {
+      const along = flight.gap.angle + flight.way * ((progress - 0.5) * sweep - (bird.behind * spacing) / flightRadius);
+      const bob = Math.sin(seconds * 0.9 + bird.behind * 3) * spacing * 0.2;
+      bird.body.position.set(
+        Math.sin(along) * flightRadius,
+        flight.height + bird.level * spacing * 0.6 + bob,
+        Math.cos(along) * flightRadius,
+      );
+      bird.body.rotation.y = along;
+      const flap = 0.55 * Math.sin(seconds * bird.beat + bird.behind * 2);
+      bird.wings[0].rotation.z = flap;
+      bird.wings[1].rotation.z = -flap;
+    }
+    if (flight.calls.length > 0 && progress >= flight.calls[0]) {
+      flight.calls.shift();
+      flock.copy(birds[0].body.position).project(camera);
+      options.onBirdCall?.(THREE.MathUtils.clamp(flock.x, -1, 1));
+    }
+  }
+
+  function update(seconds: number, camera: THREE.Camera): void {
+    time.value = seconds;
     // The sun starts high in front of the structure, to its left, and circles the sky.
     const around = -0.6 + (seconds / DAY) * TURN;
     const up = THREE.MathUtils.degToRad(34 + 20 * Math.cos((seconds / DAY) * TURN));
@@ -200,19 +381,8 @@ export async function buildSurroundings(
     disc.position.copy(direction).multiplyScalar(380);
 
     if (drifting) drifting.rotation.y = (seconds / DRIFT) * TURN;
-
-    for (const bird of birds) {
-      const along = 2.4 + (seconds / 140) * TURN + bird.offset;
-      const radius = outerRadius + 10;
-      const bob = Math.sin(seconds * 0.4 + bird.offset * 40);
-      bird.body.position.set(Math.sin(along) * radius, bird.height + bob, Math.cos(along) * radius);
-      bird.body.rotation.y = along;
-      const flap = 0.5 * Math.sin(seconds * bird.beat + bird.offset * 90);
-      bird.wings[0].rotation.z = flap;
-      bird.wings[1].rotation.z = -flap;
-    }
+    fly(seconds, camera);
   }
-  update(0);
 
   return { group, sun, innerRadius, outerRadius, update };
 }

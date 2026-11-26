@@ -3,9 +3,9 @@ import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { MeshBVH, acceleratedRaycast } from "three-mesh-bvh";
 import { applySettings, createPlaced, throb, type Placed } from "./placement";
-import { buildMeadow, type Meadow } from "./meadow";
+import { buildMeadow, gustAt, type Meadow } from "./meadow";
 import { buildSurroundings, type Surroundings } from "./scene";
-import { playPin, playRemove, setWind } from "./sound";
+import { playBirdCall, playPin, playRemove, setGust, setSound, startWind } from "./sound";
 import type { Criteria, Manifest, Range, Settings } from "./types";
 
 const ASSET_SET = "veneration-ornamentation";
@@ -63,6 +63,8 @@ let meadow: Meadow | undefined;
 let bareTexture: THREE.Texture | null = null;
 let paintedTexture: THREE.Texture | undefined;
 let chosen: string | undefined;
+// Where across the view each bird call came from, kept so a test can count them.
+const birdCalls: number[] = [];
 let selected: Placed | undefined;
 
 async function loadMesh(file: string): Promise<THREE.Mesh> {
@@ -89,11 +91,15 @@ function resize(): void {
   controls.maxDistance = Math.max(inside - PAN_REACH, frontDistance() * 1.05);
 }
 
-/** Look at the structure straight on, as the painting does. */
-function frontView(): void {
+/** Look at the structure straight on: from the front, as the painting does, or from behind. */
+function lookFrom(side: 1 | -1): void {
   controls.target.set(0, 0, 0);
-  camera.position.set(0, 0, Math.min(frontDistance(), controls.maxDistance));
+  camera.position.set(0, 0, side * Math.min(frontDistance(), controls.maxDistance));
   controls.update();
+}
+
+function frontView(): void {
+  lookFrom(1);
 }
 
 function say(message: string): void {
@@ -150,29 +156,32 @@ function clamp(value: number, range: Range): number {
   return Math.min(range.max, Math.max(range.min, value));
 }
 
-/** Put every thing where the painting has it. */
+/** Put every thing where the painting has it, and its mirror image on the far side. */
 function arrangeAsPainted(): void {
   while (placed.length > 0) unpin(placed[0].thing);
   const turn: Record<string, number> = {};
   const origin = new THREE.Vector3();
-  const toward = new THREE.Vector3(0, 0, -1);
+  const toward = new THREE.Vector3();
   for (const spot of manifest.arrangement) {
     const kind = manifest.kinds.find((entry) => entry.id === spot.kind);
     if (!kind) continue;
     turn[kind.id] = (turn[kind.id] ?? -1) + 1;
     const entry = kind.models[turn[kind.id] % kind.models.length];
     const { criteria } = models.get(entry.id)!;
+    const scale = clamp(spot.size / criteria.size.natural, criteria.adjust.scale);
+    const spin = clamp(spot.angle - criteria.source.angle, criteria.adjust.spin);
 
-    origin.set(spot.x * STRUCTURE_SIZE, spot.y * STRUCTURE_SIZE, 50);
-    raycaster.set(origin, toward);
-    const hit = raycaster.intersectObject(structure, false)[0];
-    if (!hit?.face) continue;
-    pin(entry.id, hit.point, hit.face.normal.clone().transformDirection(structure.matrixWorld), {
-      scale: clamp(spot.size / criteria.size.natural, criteria.adjust.scale),
-      spin: clamp(spot.angle - criteria.source.angle, criteria.adjust.spin),
-    });
+    for (const side of [1, -1]) {
+      origin.set(spot.x * STRUCTURE_SIZE, spot.y * STRUCTURE_SIZE, side * 50);
+      raycaster.set(origin, toward.set(0, 0, -side));
+      const hit = raycaster.intersectObject(structure, false)[0];
+      if (!hit?.face) continue;
+      const normal = hit.face.normal.clone().transformDirection(structure.matrixWorld);
+      // On the far side the thing is flipped and turned the other way, as a mirror would show it.
+      pin(entry.id, hit.point, normal, side === 1 ? { scale, spin } : { scale, spin: -spin, mirror: true });
+    }
   }
-  say(`Arranged ${placed.length} things as painted`);
+  say(`Arranged ${placed.length} things as painted, on both sides`);
 }
 
 function slider(label: string, range: Range, value: number, onInput: (value: number) => void): HTMLLabelElement {
@@ -368,7 +377,12 @@ async function start(): Promise<void> {
   );
 
   if (manifest.scene) {
-    surroundings = await buildSurroundings(manifest.scene, ASSETS, STRUCTURE_SIZE, VIEW_DISTANCE);
+    surroundings = await buildSurroundings(manifest.scene, ASSETS, STRUCTURE_SIZE, VIEW_DISTANCE, {
+      onBirdCall: (across) => {
+        birdCalls.push(across);
+        playBirdCall(across);
+      },
+    });
     meadow = await buildMeadow(manifest.scene, ASSETS, STRUCTURE_SIZE, surroundings.outerRadius);
     scene.add(surroundings.group, meadow.group);
   } else {
@@ -385,7 +399,8 @@ async function start(): Promise<void> {
     while (placed.length > 0) unpin(placed[0].thing);
     say("");
   });
-  document.querySelector("#front")!.addEventListener("click", frontView);
+  document.querySelector("#front")!.addEventListener("click", () => lookFrom(1));
+  document.querySelector("#rear")!.addEventListener("click", () => lookFrom(-1));
   document.querySelector<HTMLInputElement>("#painted")!.addEventListener("change", async (event) => {
     if (!paintedTexture) {
       paintedTexture = await new THREE.TextureLoader().loadAsync(ASSETS + manifest.structure.painted);
@@ -395,9 +410,12 @@ async function start(): Promise<void> {
     material.map = (event.target as HTMLInputElement).checked ? paintedTexture : bareTexture;
     material.needsUpdate = true;
   });
-  document.querySelector<HTMLInputElement>("#sound")!.addEventListener("change", (event) => {
-    setWind((event.target as HTMLInputElement).checked);
-  });
+  // The wind starts with the first tap, click or key press, which is when a browser allows sound.
+  const sound = document.querySelector<HTMLInputElement>("#sound")!;
+  sound.addEventListener("change", () => setSound(sound.checked));
+  for (const gesture of ["pointerdown", "keydown"]) {
+    window.addEventListener(gesture, startWind, { once: true });
+  }
 
   resize();
   frontView();
@@ -408,8 +426,9 @@ async function start(): Promise<void> {
   const farthest = reach.clone().negate();
   const draw = (seconds: number): void => {
     for (const { thing, pinnedAt } of placed) throb(thing, seconds, performance.now() / 1000 - pinnedAt);
-    surroundings?.update(seconds);
+    surroundings?.update(seconds, camera);
     meadow?.update(seconds);
+    setGust(gustAt(seconds));
     controls.target.clamp(farthest, reach);
     controls.update();
     renderer.render(scene, camera);
@@ -419,7 +438,21 @@ async function start(): Promise<void> {
   // Lets a test or the browser console drive the page. A browser stops drawing a page
   // it is not showing, so a test calls draw itself.
   Object.assign(window, {
-    venorn: { manifest, models, placed, choose, arrangeAsPainted, frontView, structure, camera, controls, scene, draw },
+    venorn: {
+      manifest,
+      models,
+      placed,
+      choose,
+      arrangeAsPainted,
+      frontView,
+      lookFrom,
+      structure,
+      camera,
+      controls,
+      scene,
+      draw,
+      birdCalls,
+    },
   });
 }
 

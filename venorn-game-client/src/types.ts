@@ -61,6 +61,8 @@ export interface Layer {
   bottom: number;
   distance: number;
   motion: "still" | "drift";
+  // The layer's top edge as points across the image: where it is, and how high.
+  skyline: [number, number][];
 }
 
 export interface SceneLayers {
