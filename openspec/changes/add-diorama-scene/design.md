@@ -90,23 +90,11 @@ A thing that the skull hides from the camera cannot be selected or removed throu
 
 ## Resolved Questions
 
-None yet.
-
-## Open Questions
-
 ### 1 - Will you get access to the DINOv3 weights on Hugging Face, so TRELLIS.2 can run on this Mac?
 
-> Context from the drafting agent, for question 1.
->
-> You chose a local generative model first. Every way of running TRELLIS.2 uses Meta's DINOv3 image encoder, whose weights are gated: a Hugging Face account has to accept [Meta's license for DINOv3](https://huggingface.co/facebook/dinov3-vitl16-pretrain-lvd1689m) and log in on this Mac with `hf auth login`. That is yours to do.
->
-> With access, [lyonsno/trellis2mlx](https://github.com/lyonsno/trellis2mlx) is the port that has been measured on a 16 GB M2 Pro, at 21 minutes for one model. It has one maintainer and 17 stars, so it is a project to judge before depending on it. [shivampkumar/trellis-mac](https://github.com/shivampkumar/trellis-mac) has 515 stars and reports a peak of 18 GB of memory, more than this Mac has.
->
-> A bundle that needs no login exists, [appautomaton/trellis2-mlx-8bit](https://huggingface.co/appautomaton/trellis2-mlx-8bit). It repackages the gated weights together with a background remover that is licensed for non-commercial use only, so I left it alone.
->
-> My recommendation: run TRELLIS.2 on the bare skull first. One hero model is worth 21 minutes, and the skull is where the mirrored relief is weakest.
+codekiln asked for access on 2026-11-26. Meta reviews each request by hand, and this one is waiting for that review. Once it is approved, codekiln logs in on this Mac with `hf auth login`, and TRELLIS.2 runs on the bare skull first. [Run TRELLIS.2 on this Mac to make the skull's model · Issue #5](https://github.com/albion-house/venorn/issues/5) tracks the steps and describes the port.
 
-<ANSWER_HERE>
+## Open Questions
 
 ### 2 - Where should generated models be stored?
 
