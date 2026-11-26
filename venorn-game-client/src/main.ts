@@ -844,6 +844,10 @@ async function start(): Promise<void> {
       pen?.end();
       changed();
     },
+    // The stroke may have been saved while it was drawn, so the skull is saved again without it.
+    strokeCancel: () => {
+      if (pen?.cancel()) changed();
+    },
     shaping: (on) => {
       // A thing that was dragged may now lie along the spike.
       if (shaping && !on) checkRow();

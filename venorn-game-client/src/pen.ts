@@ -39,6 +39,8 @@ export interface Pen {
   /** Lift the pen off the structure without ending the stroke, as when the pointer leaves the structure. */
   lift(): void;
   end(): void;
+  /** End the stroke being drawn and take it back, as when it was only the start of a zoom. Says whether there was one. */
+  cancel(): boolean;
   /** Take back the last stroke. Says whether there was one. */
   undo(): boolean;
   clear(): void;
@@ -147,6 +149,8 @@ export function buildPen(structure: THREE.Mesh, structureSize: number): Pen {
   raycaster.firstHitOnly = true;
   // Each stroke's first dab, and what is needed to draw it again.
   const strokes: (Stroke & { from: number })[] = [];
+  // The stroke being drawn, if any.
+  let drawing: (typeof strokes)[number] | undefined;
   let ink: Ink | undefined;
   let last: Spot | undefined;
   // How far the pen has travelled in this stroke, and how far since its last dab.
@@ -186,7 +190,8 @@ export function buildPen(structure: THREE.Mesh, structureSize: number): Pen {
     group,
     begin(spot: Spot, chosen: Ink): void {
       ink = chosen;
-      strokes.push({ from: dabs.count, ink: chosen, spots: [copy(spot)] });
+      drawing = { from: dabs.count, ink: chosen, spots: [copy(spot)] };
+      strokes.push(drawing);
       travelled = 0;
       owed = 0;
       last = copy(spot);
@@ -229,6 +234,16 @@ export function buildPen(structure: THREE.Mesh, structureSize: number): Pen {
     end(): void {
       ink = undefined;
       last = undefined;
+      drawing = undefined;
+    },
+    cancel(): boolean {
+      const stroke = drawing;
+      pen.end();
+      // A stroke already taken back while it was drawn is not there to take back.
+      if (!stroke || strokes[strokes.length - 1] !== stroke) return false;
+      strokes.pop();
+      dabs.count = stroke.from;
+      return true;
     },
     undo(): boolean {
       const stroke = strokes.pop();
