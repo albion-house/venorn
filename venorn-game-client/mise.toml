@@ -1,2 +1,7 @@
-# Node and aube come from the root mise.toml. The client's tasks are the files
-# in ./mise-tasks.
+# Node and aube come from the root mise.toml.
+
+[tools]
+# Command line tools the client's tasks run. package.json lists only the
+# libraries the code imports.
+"npm:vite" = "latest"
+"npm:typescript" = "latest"

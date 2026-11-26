@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+#MISE description="Type-check the client"
+#MISE depends=[":install"]
+#MISE dir="{{config_root}}"
+set -euo pipefail
+tsc --noEmit

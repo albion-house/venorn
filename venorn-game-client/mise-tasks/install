@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+#MISE description="Install the client's JavaScript dependencies"
+#MISE dir="{{config_root}}"
+set -euo pipefail
+aube install --prefer-frozen-lockfile

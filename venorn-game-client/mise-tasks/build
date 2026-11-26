@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+#MISE description="Build the static site into dist/"
+#MISE depends=[":check"]
+#MISE dir="{{config_root}}"
+set -euo pipefail
+vite build
