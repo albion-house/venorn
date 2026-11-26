@@ -75,7 +75,7 @@ When the asset set names a hollow on the structure, a rabbit SHALL come out of i
 
 ### Requirement: Music from the placed things
 
-Each thing on the structure SHALL play a note of its own that comes around on a loop of its own length. A thing higher on the structure SHALL play a higher note, and each category SHALL have its own voice. A thing placed alone SHALL sound within a second. The music's level SHALL rise from silence with the number of things placed, with a low drone under the notes, and the "Sound" switch SHALL silence it.
+Each thing on the structure SHALL play a note of its own that comes around on a loop of its own length. Each category SHALL have its own voice, and of two things in one category the one higher on the structure SHALL NOT play the lower note by more than two steps of the scale. A thing placed alone SHALL sound within a second. The music's level SHALL rise from silence with the number of things placed, with a low drone under the notes, and the "Sound" switch SHALL silence it.
 
 #### Scenario: Nothing is placed
 
@@ -95,8 +95,8 @@ Each thing on the structure SHALL play a note of its own that comes around on a 
 
 #### Scenario: Thing on the horn
 
-- **WHEN** a thing near the tip of the horn and a thing on the jaw both sound
-- **THEN** the thing on the horn plays the higher note
+- **WHEN** a jewel near the tip of the horn and a jewel on the jaw both sound
+- **THEN** the jewel on the horn plays the higher note
 
 ### Requirement: Things sound from where they sit
 
