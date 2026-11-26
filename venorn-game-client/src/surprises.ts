@@ -310,15 +310,32 @@ export function buildSurprises(options: SurprisesOptions): Surprises {
   let last = 0;
 
   const texture = drawRabbits();
-  const sprite = new THREE.Sprite(
-    new THREE.SpriteMaterial({ map: texture, color: 0xf6eee0, alphaTest: 0.4, transparent: true }),
-  );
-  // The rabbit's length is about nine tenths of a picture's width, and its feet are near the bottom.
+  // The rabbit is a card that faces the camera, lit by the sun and the sky as the paper meadow is.
+  const paper = new THREE.MeshStandardMaterial({
+    map: texture,
+    color: 0xf6eee0,
+    roughness: 1,
+    metalness: 0,
+    alphaTest: 0.4,
+    transparent: true,
+  });
+  // As in the meadow, the picture's own colors show through in shade, so the paper never goes dull.
+  paper.onBeforeCompile = (shader) => {
+    shader.fragmentShader = shader.fragmentShader.replace(
+      "#include <emissivemap_fragment>",
+      "totalEmissiveRadiance = diffuseColor.rgb * 0.3;",
+    );
+  };
+  // The rabbit's feet are near the bottom of its picture, and the card stands on them.
+  const shape = new THREE.PlaneGeometry(1, 1);
+  shape.translate(0, 0.3, 0);
+  const card = new THREE.Mesh(shape, paper);
+  card.receiveShadow = true;
+  // The rabbit's length is about nine tenths of a picture's width.
   const width = (RABBIT * structureSize) / 0.9;
   const size = new THREE.Vector2(width, (width * FRAME[1]) / FRAME[0]);
-  sprite.center.set(0.5, 0.2);
-  sprite.visible = false;
-  group.add(sprite);
+  card.visible = false;
+  group.add(card);
   let run: { start: THREE.Vector3; hops: Hop[]; from: number | undefined } | undefined;
   const right = new THREE.Vector3();
   const stride = new THREE.Vector3();
@@ -386,34 +403,36 @@ export function buildSurprises(options: SurprisesOptions): Surprises {
     if (!run) return;
     run.from ??= seconds;
     const since = seconds - run.from;
-    sprite.visible = true;
+    card.visible = true;
     let frame = 1;
     let facing = 1;
+    let tip = 0;
     if (since < PEEK) {
       // The rabbit grows out of the hollow and looks around.
-      sprite.position.copy(run.start);
-      sprite.scale.set(size.x, size.y, 1).multiplyScalar(THREE.MathUtils.smoothstep(since, 0, 0.35));
-      sprite.material.rotation = 0;
+      card.position.copy(run.start);
+      card.scale.set(size.x, size.y, 1).multiplyScalar(THREE.MathUtils.smoothstep(since, 0, 0.35));
       facing = Math.sin(since * 9) > 0 ? 1 : -1;
     } else {
       const hop = run.hops.find((candidate) => since - PEEK < candidate.at + candidate.seconds);
       if (!hop) {
-        sprite.visible = false;
+        card.visible = false;
         run = undefined;
         return;
       }
       const through = (since - PEEK - hop.at) / hop.seconds;
-      sprite.position.lerpVectors(hop.from, hop.to, through);
-      sprite.position.y += hop.height * 4 * through * (1 - through);
-      sprite.scale.set(size.x, size.y, 1);
+      card.position.lerpVectors(hop.from, hop.to, through);
+      card.position.y += hop.height * 4 * through * (1 - through);
+      card.scale.set(size.x, size.y, 1);
       frame = through > 0.12 && through < 0.88 ? 0 : 1;
       // The rabbit faces the way it is going across the screen, and tips up and down with each bound.
       stride.subVectors(hop.to, hop.from);
       right.setFromMatrixColumn(camera.matrixWorld, 0);
       facing = stride.dot(right) >= 0 ? 1 : -1;
       const rise = hop.height * 4 * (1 - 2 * through) + stride.y;
-      sprite.material.rotation = facing * Math.atan2(rise, Math.hypot(stride.x, stride.z)) * 0.6;
+      tip = facing * Math.atan2(rise, Math.hypot(stride.x, stride.z)) * 0.6;
     }
+    card.quaternion.copy(camera.quaternion);
+    card.rotateZ(tip);
     texture.offset.x = (frame + (facing > 0 ? 0 : 2)) * 0.25;
   }
 
@@ -464,7 +483,7 @@ export function buildSurprises(options: SurprisesOptions): Surprises {
     state: () => ({
       flecks: glitter.alive,
       spewing: last < spewUntil,
-      rabbit: run && sprite.visible ? sprite.position.clone() : undefined,
+      rabbit: run && card.visible ? card.position.clone() : undefined,
     }),
   };
 }

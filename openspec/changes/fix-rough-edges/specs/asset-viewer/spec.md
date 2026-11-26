@@ -32,12 +32,17 @@ The color adjustment SHALL turn the hue of a thing's colored parts. Parts that a
 
 ### Requirement: Rabbit in the light of the scene
 
-The rabbit SHALL be lit by the sun and the sky in the way the paper meadow is lit. It SHALL take on the sun's color and be darker when the sun is low.
+The rabbit SHALL be lit by the sun and the sky in the way the paper meadow is lit. It SHALL take on the sun's color, and SHALL be darker when the sun is behind it.
 
-#### Scenario: Rabbit at dusk
+#### Scenario: Sun low behind the skull
 
-- **WHEN** a rabbit comes out while the sun is low in the sky
-- **THEN** the rabbit is darker and warmer than a rabbit that comes out at midday
+- **WHEN** a rabbit comes out at dusk while the camera looks at the skull from the front and the sun is low behind the skull
+- **THEN** the rabbit is darker than a rabbit that comes out at midday
+
+#### Scenario: Low sun on the rabbit
+
+- **WHEN** a rabbit comes out at dusk on the side of the skull that the low sun shines on
+- **THEN** the rabbit takes on the sun's orange
 
 ### Requirement: Layers whose ends join repeat as they are
 

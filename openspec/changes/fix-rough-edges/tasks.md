@@ -10,7 +10,7 @@
 
 ## 3. Rabbit
 
-- [ ] 3.1 Draw the rabbit as a lit card that faces the camera. Verify: pictures read from the canvas show the rabbit darker and warmer at dusk than at midday.
+- [x] 3.1 Draw the rabbit as a lit card that faces the camera. Verify: the rabbit's mean color read from the canvas, as it looks out of the socket, was (235, 217, 190) at midday and at dusk, from the front and from behind. Now it is (234, 211, 179) from the front at midday, (191, 175, 149) from the front at dusk with the sun low behind the skull, and (249, 210, 166) from behind at dusk with the low sun on it. Pictures of it bounding across the meadow show its poses and its tip as before.
 
 ## 4. Layers whose ends join
 

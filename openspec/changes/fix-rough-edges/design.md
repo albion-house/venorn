@@ -36,7 +36,7 @@ A thing's typical value is the median of the largest channel over the opaque pix
 
 ### The rabbit is a lit card
 
-The rabbit was a sprite, which three.js draws without light. It is now a flat card that faces the camera each frame, drawn with the same lit material as the paper plants: it takes the sun and the sky, receives shadows, and shows 0.3 of its own color in shade so it never goes dull. It keeps its pictures, its poses and its path.
+The rabbit was a sprite, which three.js draws without light. It is now a flat card that faces the camera each frame, drawn with a lit material like the paper plants': it takes the sun and the sky, receives shadows, and shows 0.3 of its own color in shade so it never goes dull. It keeps its pictures, its poses and its path.
 
 ### The pipeline joins a layer's ends
 
