@@ -9,6 +9,7 @@ import numpy as np
 from PIL import Image
 
 from . import models, relief
+from .color import hue_saturation_value
 from .criteria import criteria_for
 from .isolate import bleed_edges
 from .source import Source
@@ -75,7 +76,12 @@ def lift(source: Source) -> None:
             continue
 
         kind = source.kind(item["kind"])
-        front, back = relief.thing_heights(context, alpha, kind.thickness)
+        # A painted kind's paint lies flat, and whatever it carries stands out.
+        flat = None
+        if kind.hue is not None:
+            hue, saturation, _ = hue_saturation_value(np.asarray(cutout)[..., :3])
+            flat = (hue > kind.hue[0]) & (hue < kind.hue[1]) & (saturation > 0.3)
+        front, back = relief.thing_heights(context, alpha, kind.thickness, flat)
         anchor = _alpha_centroid(alpha)
         if kind.role == "printed":
             mesh, scale = relief.build_mesh(texture, front, anchor, THING_CELLS)
@@ -88,13 +94,16 @@ def lift(source: Source) -> None:
 
         instance = instances[item["instance"]]
         ys, xs = np.nonzero(alpha > 0.5)
+        # Painted things differ from one another, so each keeps the size it has in the painting.
+        own = max(instance["box"][2] - instance["box"][0], instance["box"][3] - instance["box"][1]) / structure_long
+        size = own if kind.find == "painted" else natural[kind.id]
         record = criteria_for(
             item_id=item["id"],
             kind=kind.id,
             role=kind.role,
             model=f"{item['id']}.glb",
             size={
-                "natural": round(natural[kind.id], 4),
+                "natural": round(size, 4),
                 "aspect": round(float((np.ptp(xs) + 1) / (np.ptp(ys) + 1)), 3),
                 "thickness": round(float(thickness), 4),
             },

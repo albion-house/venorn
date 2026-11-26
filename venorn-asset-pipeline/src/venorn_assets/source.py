@@ -18,12 +18,20 @@ def project_root() -> Path:
     return Path(__file__).resolve().parents[2]
 
 
+FINDERS = ("detector", "painted")
+
+
 @dataclass(frozen=True)
 class Kind:
     id: str
-    prompt: str
-    looks_like: str
     role: str
+    # How instances are found: by the detector and classifier, or by their paint on the structure.
+    find: str = "detector"
+    prompt: str = ""
+    looks_like: str = ""
+    # For a painted kind: the hue range of its paint in degrees, and the kinds it may carry.
+    hue: tuple[float, float] | None = None
+    carries: tuple[str, ...] = ()
     exemplars: int = 1
     thickness: float = 0.3
     criteria: dict = field(default_factory=dict)
@@ -96,12 +104,23 @@ def load_source(name: str, root: Path | None = None) -> Source:
     for entry in data.get("kinds", []):
         if entry["role"] not in ROLES:
             raise SystemExit(f"{path}: kind {entry['id']} has role {entry['role']}; use one of {ROLES}")
+        find = entry.get("find", "detector")
+        if find not in FINDERS:
+            raise SystemExit(f"{path}: kind {entry['id']} is found by {find}; use one of {FINDERS}")
+        prompt = entry.get("prompt", "").lower()
+        if find == "detector" and not prompt:
+            raise SystemExit(f"{path}: kind {entry['id']} needs a prompt for the detector")
+        if find == "painted" and "hue" not in entry:
+            raise SystemExit(f"{path}: kind {entry['id']} needs the hue range of its paint")
         kinds.append(
             Kind(
                 id=entry["id"],
-                prompt=entry["prompt"].lower(),
-                looks_like=entry.get("looks_like", f"a {entry['prompt'].lower()}"),
                 role=entry["role"],
+                find=find,
+                prompt=prompt,
+                looks_like=entry.get("looks_like", f"a {prompt}"),
+                hue=tuple(float(v) for v in entry["hue"]) if "hue" in entry else None,
+                carries=tuple(entry.get("carries", ())),
                 exemplars=int(entry.get("exemplars", 1)),
                 thickness=float(entry.get("thickness", 0.3)),
                 criteria=entry.get("criteria", {}),

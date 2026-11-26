@@ -39,8 +39,14 @@ id = "sky"
 
 # Each kind is a thing the player can put on the structure.
 #
+#   find        "detector" (the default) looks for the prompt and names what it
+#               finds with looks_like; "painted" takes the patches of the
+#               structure that carry paint in the hue range
 #   prompt      words the detector looks for
 #   looks_like  a short description the classifier uses to tell kinds apart
+#   hue         for a painted kind, the hue range of its paint in degrees
+#   carries     for a painted kind, the kinds whose instances join the paint
+#               they sit on
 #   role        "pinned" is a solid thing held on with a pin;
 #               "printed" is a flat motif that follows the surface
 #   exemplars   how many of the instances found become models
@@ -104,3 +110,14 @@ max = 0.4
 default = 0.0
 min = 0.0
 max = 1.0
+
+# The plants painted onto the bone: yellow-green stems and leaves that lie
+# flat, with the flowers they carry standing out.
+[[kinds]]
+id = "sprig"
+find = "painted"
+hue = [44, 170]
+carries = ["flower"]
+role = "printed"
+exemplars = 7
+thickness = 0.5
