@@ -6,7 +6,7 @@ import argparse
 
 from .source import load_source
 
-STAGES = ("fetch", "catalog", "isolate", "lift", "export")
+STAGES = ("fetch", "catalog", "isolate", "layers", "lift", "export")
 
 
 def run_stage(stage: str, source_name: str) -> None:
@@ -23,6 +23,10 @@ def run_stage(stage: str, source_name: str) -> None:
         from .isolate import isolate
 
         isolate(source)
+    elif stage == "layers":
+        from .layers import layers
+
+        layers(source)
     elif stage == "lift":
         from .lift import lift
 

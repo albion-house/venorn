@@ -10,8 +10,32 @@ sha256 = "cee2789a4be34d8a91ea36cc81c4d37f80cb5f64d472590a0368c8b5f89af402"
 [structure]
 id = "skull"
 prompts = ["skull", "horn"]
-# Relief depth as a fraction of the structure's longer side.
-thickness = 0.16
+# Half the structure's depth as a fraction of its longer side. The far side
+# mirrors the near side.
+thickness = 0.17
+
+# The scene around the structure, split into four layers.
+
+# A band along the bottom of the image that the structure rests in.
+[scene.ground]
+id = "meadow"
+
+# The distant layer: background pixels with a hue in this range, in degrees.
+# distance is how far from the structure the layer stands, in structure lengths.
+[scene.far]
+id = "forest"
+hue = [62, 178]
+distance = 8.5
+
+# Everything else that stands out from the backdrop.
+[scene.floating]
+id = "clouds"
+distance = 6.5
+motion = "drift"
+
+# A smooth vertical gradient behind everything.
+[scene.backdrop]
+id = "sky"
 
 # Each kind is a thing the player can put on the structure.
 #
@@ -20,7 +44,9 @@ thickness = 0.16
 #   role        "pinned" is a solid thing held on with a pin;
 #               "printed" is a flat motif that follows the surface
 #   exemplars   how many of the instances found become models
-#   thickness   relief depth as a fraction of the thing's shorter side
+#   thickness   the thing's greatest depth as a fraction of its shorter side;
+#               1.0 makes a round cross-section
+#   criteria    values that replace the role's default adjustment criteria
 
 [[kinds]]
 id = "butterfly"
@@ -28,7 +54,13 @@ prompt = "butterfly"
 looks_like = "a butterfly"
 role = "pinned"
 exemplars = 2
-thickness = 0.10
+thickness = 0.14
+
+# A pinned butterfly holds its wings up from the surface.
+[kinds.criteria.adjust.fold]
+default = 28.0
+min = 0.0
+max = 70.0
 
 [[kinds]]
 id = "candy"
@@ -36,7 +68,7 @@ prompt = "candy"
 looks_like = "a wrapped candy with twisted wrapper ends"
 role = "pinned"
 exemplars = 3
-thickness = 0.45
+thickness = 0.85
 
 [[kinds]]
 id = "capsule"
@@ -44,7 +76,7 @@ prompt = "pill"
 looks_like = "a two-colored medicine capsule"
 role = "pinned"
 exemplars = 2
-thickness = 0.6
+thickness = 1.0
 
 [[kinds]]
 id = "bead"
@@ -52,12 +84,23 @@ prompt = "bead"
 looks_like = "a round bead on a pin"
 role = "pinned"
 exemplars = 2
-thickness = 0.6
+thickness = 1.0
 
 [[kinds]]
 id = "flower"
 prompt = "flower"
 looks_like = "a flower"
-role = "printed"
+role = "pinned"
 exemplars = 4
-thickness = 0.06
+thickness = 0.5
+
+# A flower sits close to the surface and can be pressed flat onto it.
+[kinds.criteria.attach.standoff]
+default = 0.03
+min = 0.0
+max = 0.4
+
+[kinds.criteria.adjust.conform]
+default = 0.0
+min = 0.0
+max = 1.0

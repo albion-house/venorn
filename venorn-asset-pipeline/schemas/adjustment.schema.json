@@ -11,7 +11,7 @@
     "kind": { "type": "string", "description": "The kind of thing, as named in source.toml." },
     "role": {
       "enum": ["pinned", "printed"],
-      "description": "pinned: a solid thing held on with a pin. printed: a flat motif that follows the surface."
+      "description": "pinned: a closed, solid thing held on with a pin. printed: a flat motif that follows the surface."
     },
     "model": { "type": "string", "description": "File name of the GLB model, beside this file." },
     "size": {
@@ -25,7 +25,7 @@
           "description": "The model's longer side as a fraction of the structure's longer side, measured in the source image. A scale of 1 shows the model at this size."
         },
         "aspect": { "type": "number", "exclusiveMinimum": 0, "description": "Width divided by height." },
-        "thickness": { "type": "number", "minimum": 0, "description": "How far the model rises above its anchor plane." }
+        "thickness": { "type": "number", "minimum": 0, "description": "The model's depth from its back, which rests on the anchor plane, to its front." }
       }
     },
     "attach": {
@@ -60,12 +60,17 @@
     },
     "adjust": {
       "type": "object",
-      "required": ["scale", "spin", "tilt", "conform", "bend", "mirror"],
+      "required": ["scale", "spin", "tilt", "depth", "conform", "bend", "mirror"],
       "additionalProperties": false,
       "properties": {
         "scale": { "$ref": "#/$defs/range", "description": "Multiplier on the natural size." },
         "spin": { "$ref": "#/$defs/range", "description": "Rotation about the surface normal." },
         "tilt": { "$ref": "#/$defs/range", "description": "Lean away from the surface normal." },
+        "depth": { "$ref": "#/$defs/range", "description": "Multiplier on the model's thickness. A small value presses the model nearly flat." },
+        "fold": {
+          "$ref": "#/$defs/range",
+          "description": "How far both ends of the model's long axis lift off the surface, as a pinned butterfly holds its wings."
+        },
         "conform": {
           "$ref": "#/$defs/range",
           "description": "How closely the model follows the surface under it. 0 keeps the model rigid. 1 wraps it onto the surface."

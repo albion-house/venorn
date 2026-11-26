@@ -53,11 +53,11 @@ def lift(source: Source) -> None:
         texture = Image.fromarray(bleed_edges(np.asarray(cutout)))
 
         if item["role"] == "structure":
-            height = relief.structure_height(context, alpha, source.structure.thickness)
+            front, back = relief.structure_heights(context, alpha, source.structure.thickness)
             # The structure's origin is the middle of its outline, so placements can be given relative to it.
             ys, xs = np.nonzero(alpha > 0.5)
             anchor = ((xs.min() + xs.max()) / 2, (ys.min() + ys.max()) / 2)
-            mesh, scale = relief.build_mesh(texture, height, anchor, STRUCTURE_CELLS)
+            mesh, scale = relief.build_mesh(texture, front, anchor, STRUCTURE_CELLS, back=back)
             mesh.export(out / f"{item['id']}.glb")
             painted = Image.open(isolated_dir / f"{item['id']}.painted.png")
             Image.fromarray(bleed_edges(np.asarray(painted))).save(out / f"{item['id']}.painted.png")
@@ -65,7 +65,7 @@ def lift(source: Source) -> None:
                 "id": item["id"],
                 "model": f"{item['id']}.glb",
                 "painted": f"{item['id']}.painted.png",
-                "thickness": round(float(height.max() * scale), 4),
+                "thickness": round(float((front.max() + back.max()) * scale), 4),
                 # Where the origin sits in the source image, and how many model units one source pixel is.
                 "origin": [round(item["crop"][0] + anchor[0], 2), round(item["crop"][1] + anchor[1], 2)],
                 "scale": scale,
@@ -75,9 +75,14 @@ def lift(source: Source) -> None:
             continue
 
         kind = source.kind(item["kind"])
-        height = relief.thing_height(context, alpha, kind.thickness)
+        front, back = relief.thing_heights(context, alpha, kind.thickness)
         anchor = _alpha_centroid(alpha)
-        mesh, scale = relief.build_mesh(texture, height, anchor, THING_CELLS)
+        if kind.role == "printed":
+            mesh, scale = relief.build_mesh(texture, front, anchor, THING_CELLS)
+            thickness = front.max() * scale
+        else:
+            mesh, scale = relief.build_mesh(texture, front, anchor, THING_CELLS, back=back, rest_on_back=True)
+            thickness = (front.max() + back.max()) * scale
         mesh.export(out / f"{item['id']}.glb")
         cutout.save(out / f"{item['id']}.png")
 
@@ -91,9 +96,9 @@ def lift(source: Source) -> None:
             size={
                 "natural": round(natural[kind.id], 4),
                 "aspect": round(float((np.ptp(xs) + 1) / (np.ptp(ys) + 1)), 3),
-                "thickness": round(float(height.max() * scale), 4),
+                "thickness": round(float(thickness), 4),
             },
-            overrides=kind.adjust,
+            overrides=kind.criteria,
             source={
                 "image": source.name,
                 "instance": instance["id"],

@@ -13,25 +13,12 @@ import colorsys
 import numpy as np
 from scipy import ndimage
 
-
-def _hue_saturation_value(rgb: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-    scaled = rgb.astype(np.float32) / 255.0
-    high, low = scaled.max(axis=-1), scaled.min(axis=-1)
-    spread = high - low
-    saturation = np.where(high > 0, spread / np.maximum(high, 1e-6), 0)
-    red, green, blue = scaled[..., 0], scaled[..., 1], scaled[..., 2]
-    safe = np.maximum(spread, 1e-6)
-    hue = np.select(
-        [high == red, high == green],
-        [((green - blue) / safe) % 6, (blue - red) / safe + 2],
-        default=(red - green) / safe + 4,
-    )
-    return hue * 60.0, saturation, high
+from .color import hue_saturation_value
 
 
 def find_additions(rgb: np.ndarray, structure: np.ndarray, cataloged: np.ndarray) -> np.ndarray:
     """Mark every pixel of the structure that is something added to it."""
-    hue, saturation, value = _hue_saturation_value(rgb)
+    hue, saturation, value = hue_saturation_value(rgb)
 
     # The structure's own color: the typical hue and saturation of the pixels no instance covers.
     plain = structure & ~cataloged

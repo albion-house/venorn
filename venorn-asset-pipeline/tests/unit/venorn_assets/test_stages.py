@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from venorn_assets import bare
+from venorn_assets import bare, layers
 from venorn_assets.catalog import TILE, _principal_angle, _tiles
 from venorn_assets.isolate import bleed_edges
 from venorn_assets.source import load_source
@@ -12,8 +12,20 @@ def test_painting_source_names_its_structure_and_kinds():
 
     assert source.structure.id == "skull"
     assert {kind.id for kind in source.kinds} == {"butterfly", "candy", "capsule", "bead", "flower"}
-    assert source.kind("flower").role == "printed"
-    assert source.kind("candy").role == "pinned"
+    assert all(kind.role == "pinned" for kind in source.kinds)
+    assert source.kind("butterfly").criteria["adjust"]["fold"]["default"] > 0
+
+
+def test_painting_source_declares_its_scene_layers():
+    scene = load_source("veneration-ornamentation").scene
+
+    assert (scene.ground_id, scene.floating_id, scene.far_id, scene.backdrop_id) == (
+        "meadow",
+        "clouds",
+        "forest",
+        "sky",
+    )
+    assert scene.far_distance > scene.floating_distance > 0
 
 
 def test_unknown_source_is_reported_with_the_known_ones():
@@ -66,3 +78,72 @@ def test_vivid_marks_on_plain_bone_are_found_and_filled():
     assert not additions[5, 5]
     assert np.abs(filled[30, 30].astype(int) - bone).max() <= 2
     assert tuple(filled[5, 5]) == bone
+
+
+@pytest.fixture
+def scene_picture() -> tuple[np.ndarray, np.ndarray]:
+    """A sky that runs from blue down to pink at row 60, with a speckled blue patch floating in it."""
+    rows = np.linspace(0, 1, 100)[:, None]
+    top, horizon = np.array([20, 90, 160]), np.array([240, 200, 205])
+    sky = top + (horizon - top) * np.clip(rows / 0.6, 0, 1)[..., None]
+    image = np.repeat(sky, 160, axis=1).astype(np.uint8)
+    random = np.random.default_rng(7)
+    patch = np.zeros((100, 160), dtype=bool)
+    patch[20:40, 50:110] = True
+    image[patch] = random.integers(0, 255, size=(int(patch.sum()), 1)) * np.array([0.2, 0.5, 1.0])
+    return image, patch
+
+
+def test_flat_sky_is_told_from_a_textured_patch(scene_picture):
+    image, patch = scene_picture
+    everything = np.ones(patch.shape, dtype=bool)
+
+    flat = layers.find_flat(image, everything)
+
+    assert not flat[patch].any()
+    assert flat[70:95, 10:150].all()
+
+
+def test_backdrop_follows_the_sky_to_the_horizon_and_holds_below_it(scene_picture):
+    image, patch = scene_picture
+    flat = layers.find_flat(image, np.ones(patch.shape, dtype=bool))
+
+    backdrop = layers.fit_backdrop(image, flat)
+
+    assert np.abs(backdrop[2] - image[2, 0]).max() < 12
+    assert np.abs(backdrop[60] - (240, 200, 205)).max() < 12
+    assert np.allclose(backdrop[75], backdrop[99])
+
+
+def test_textured_blue_patch_floats(scene_picture):
+    image, patch = scene_picture
+    everything = np.ones(patch.shape, dtype=bool)
+    no_ground = np.zeros(patch.shape, dtype=bool)
+
+    floating, ground, leftover = layers.find_floating(image, everything, layers.find_flat(image, everything), no_ground)
+
+    assert floating[25:35, 60:100].all()
+    assert not floating[70:95].any()
+    assert not ground.any() and not leftover.any()
+
+
+def test_far_layer_carries_on_behind_the_structure():
+    """Two tree masses with the structure standing between them and rising above them."""
+    far = np.zeros((200, 300), dtype=bool)
+    far[80:, :100] = True
+    far[80:, 200:] = True
+    in_front = np.zeros_like(far)
+    in_front[40:200, 100:200] = True
+    nothing = np.zeros_like(far)
+
+    extent = layers.far_extent(far, nothing, in_front)
+
+    assert extent[80:, :].all()
+    assert not extent[:75, :].any()
+
+
+def test_far_layer_keeps_its_pixels_along_the_sides_of_the_image():
+    mask = np.zeros((40, 40), dtype=bool)
+    mask[10:, :] = True
+
+    assert layers._close(mask, 2)[10:, [0, -1]].all()

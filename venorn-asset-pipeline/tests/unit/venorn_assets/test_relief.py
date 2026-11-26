@@ -64,3 +64,38 @@ def test_model_exports_as_binary_gltf(disc, tmp_path):
     path = tmp_path / "disc.glb"
     mesh.export(path)
     assert path.read_bytes()[:4] == b"glTF"
+
+
+def test_closed_model_has_a_back_that_mirrors_the_front_outline(disc):
+    texture, height = disc
+    open_mesh, _ = relief.build_mesh(texture, height, anchor=(60, 40), cells=40)
+    closed, scale = relief.build_mesh(texture, height, anchor=(60, 40), cells=40, back=height)
+
+    assert len(closed.vertices) == 2 * len(open_mesh.vertices)
+    assert len(closed.faces) == 2 * len(open_mesh.faces)
+    assert closed.vertices[:, 2].max() == pytest.approx(10 * scale, rel=0.15)
+    assert closed.vertices[:, 2].min() == pytest.approx(-10 * scale, rel=0.15)
+    # Half of the faces look toward the viewer and half look away.
+    assert (closed.face_normals[:, 2] > 0).sum() == (closed.face_normals[:, 2] < 0).sum()
+
+
+def test_closed_model_can_rest_its_back_on_the_anchor_plane(disc):
+    texture, height = disc
+    mesh, scale = relief.build_mesh(texture, height, anchor=(60, 40), cells=40, back=height, rest_on_back=True)
+
+    assert mesh.vertices[:, 2].min() == pytest.approx(0, abs=1e-9)
+    assert mesh.vertices[:, 2].max() == pytest.approx(20 * scale, rel=0.15)
+
+
+def test_round_profile_makes_each_part_as_deep_as_it_is_wide():
+    """A wide disc with a thin bar sticking out of it: the bar swells much less than the disc."""
+    mask = np.zeros((120, 260), dtype=bool)
+    grid_y, grid_x = np.mgrid[0:120, 0:260]
+    mask[(grid_x - 60) ** 2 + (grid_y - 60) ** 2 < 50**2] = True
+    mask[55:65, 100:250] = True
+
+    height = relief.round_profile(mask)
+
+    assert height[60, 60] == pytest.approx(50, rel=0.1)
+    assert height[60, 200] == pytest.approx(5, abs=2)
+    assert height[~mask].max() == 0
