@@ -29,6 +29,8 @@ const CROSSING = 13;
 // Seconds between one flock and the next: at least the first number, at most the sum.
 const QUIET: [number, number] = [22, 30];
 const TURN = Math.PI * 2;
+// The drifting layer's ring carries on this share of the picture's height above its top.
+const CLOUDS_ABOVE = 0.6;
 
 /** Elevation in radians of a height on the structure's plane, as seen from the front view. */
 function elevation(height: number, structureSize: number, viewDistance: number): number {
@@ -70,13 +72,16 @@ interface Ring {
   start: number;
   grow: number;
   mirrored: boolean;
+  /** How far the ring carries on above the picture's top, as a share of the picture's height. */
+  above: number;
 }
 
 /**
  * Wrap one layer's picture around the scene. The picture repeats around the
  * circle as it is when its ends join, and otherwise with every second copy
  * mirrored so the copies join. One copy faces the front view at the size and
- * place it has in the source image.
+ * place it has in the source image. The ring may stand taller than the picture,
+ * by a share of its height, and slither draws clouds there.
  */
 function buildRing(
   layer: Layer,
@@ -84,6 +89,7 @@ function buildRing(
   radius: number,
   structureSize: number,
   viewDistance: number,
+  above = 0,
 ): Ring {
   // The ring is seen from inside. A picture that far away has to be larger to look the size it is in the image.
   const grow = (viewDistance + radius) / viewDistance;
@@ -98,9 +104,11 @@ function buildRing(
   texture.colorSpace = THREE.SRGBColorSpace;
   texture.wrapS = mirrored ? THREE.MirroredRepeatWrapping : THREE.RepeatWrapping;
   texture.repeat.x = copies;
+  // The picture's height spans 0 to 1 up the ring, and the part above it runs from 1 to 1 + above.
+  texture.repeat.y = 1 + above;
   texture.anisotropy = 8;
 
-  const height = (layer.top - layer.bottom) * structureSize * grow;
+  const height = (layer.top - layer.bottom) * structureSize * grow * (1 + above);
   const geometry = new THREE.CylinderGeometry(radius, radius, height, copies * 24, 1, true, start);
   const material = new THREE.MeshBasicMaterial({
     map: texture,
@@ -110,26 +118,31 @@ function buildRing(
     depthWrite: false,
   });
   const mesh = new THREE.Mesh(geometry, material);
-  mesh.position.y = ((layer.top + layer.bottom) / 2) * structureSize * grow;
+  mesh.position.y = layer.bottom * structureSize * grow + height / 2;
   // Seen from inside, a ring shows its picture mirrored, so it is flipped back.
   mesh.scale.x = -1;
-  return { mesh, material, radius, copies, start, grow, mirrored };
+  return { mesh, material, radius, copies, start, grow, mirrored, above };
 }
 
 /**
  * Make a layer's picture flow. Each part of the picture is pulled its own way
- * by a slow, smooth field, so neighboring clouds slither differently.
+ * by a slow, smooth field, so neighboring clouds slither differently. Where the
+ * ring stands taller than the picture, the clouds carry on above the picture's
+ * top: the picture's upper part again, moved along the ring so the two do not
+ * line up, fading in across the top edge and out toward the ring's top.
  */
 function slither(ring: Ring, time: { value: number }): void {
   ring.material.onBeforeCompile = (shader) => {
     shader.uniforms.uTime = time;
     shader.uniforms.uAround = { value: ring.copies * 2 };
+    shader.uniforms.uAbove = { value: ring.above };
     shader.fragmentShader = shader.fragmentShader
       .replace(
         "#include <common>",
         /* glsl */ `#include <common>
         uniform float uTime;
         uniform float uAround;
+        uniform float uAbove;
         // Smooth noise that joins up with itself once around the ring.
         float flowNoise(vec2 point, float around) {
           vec2 cell = floor(point);
@@ -155,9 +168,19 @@ function slither(ring: Ring, time: { value: number }): void {
         vec2 quick = vec2(
           flowNoise(flowAt * 3.0 + vec2(uTime * 0.06, 0.0), uAround * 3.0),
           flowNoise(flowAt * 3.0 + vec2(7.0, uTime * 0.05), uAround * 3.0)) - 0.5;
-        vec4 sampledDiffuseColor = texture2D(map, vMapUv + slow * vec2(0.085, 0.04) + quick * vec2(0.014, 0.009));
+        vec2 flowUv = vMapUv + slow * vec2(0.085, 0.04) + quick * vec2(0.014, 0.009);
+        vec4 sampledDiffuseColor = texture2D(map, flowUv);
         // The picture ends at the top of the image, so what the image cut off fades out there.
         sampledDiffuseColor.a *= smoothstep(1.0, 0.93, vMapUv.y);
+        if (uAbove > 0.0) {
+          // Above the top edge, the picture's upper part again, 0.37 of a copy along, behind the picture.
+          vec4 over = texture2D(map, flowUv + vec2(0.37, -uAbove));
+          over.a *= smoothstep(0.95, 1.0, vMapUv.y) * smoothstep(1.0 + uAbove, 1.0 + uAbove * 0.5, vMapUv.y);
+          float behind = over.a * (1.0 - sampledDiffuseColor.a);
+          float alpha = sampledDiffuseColor.a + behind;
+          sampledDiffuseColor.rgb = (sampledDiffuseColor.rgb * sampledDiffuseColor.a + over.rgb * behind) / max(alpha, 1e-4);
+          sampledDiffuseColor.a = alpha;
+        }
         diffuseColor *= sampledDiffuseColor;`,
       );
   };
@@ -293,7 +316,9 @@ export async function buildSurroundings(
     if (layer.role === "ground") continue;
     const texture = await loader.loadAsync(assets + layer.image);
     const radius = layer.distance * structureSize;
-    const ring = buildRing(layer, texture, radius, structureSize, viewDistance);
+    // The clouds carry on above the picture's top, which a tall screen looks over once the camera turns or tilts.
+    const above = layer.motion === "drift" ? CLOUDS_ABOVE : 0;
+    const ring = buildRing(layer, texture, radius, structureSize, viewDistance, above);
     ring.mesh.renderOrder = order[layer.role];
     group.add(ring.mesh);
     innerRadius = Math.min(innerRadius, radius);
