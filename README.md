@@ -2,6 +2,8 @@
 
 A calm browser game about adorning a skull in a meadow. The player pins candies, capsules, butterflies, beads and flowers to a unicorn skull, building a small shrine.
 
+Play it at https://albion-house.github.io/venorn/.
+
 The game takes its look from the Fawnicorn painting [Veneration Ornamentation](https://fawnicorn.com/assets/art/veneration-ornamentation.jpg): a decorated skull lying in a flowering meadow, with a forest and curling clouds behind it.
 
 ## Layout
@@ -9,7 +11,7 @@ The game takes its look from the Fawnicorn painting [Veneration Ornamentation](h
 | Directory | What it holds |
 | --- | --- |
 | `venorn-asset-pipeline/` | Python pipeline that turns a source image into 3D models, each with adjustment criteria, and into the layers of the scene around them |
-| `venorn-game-client/` | TypeScript and three.js web client. Its build output is the future GitHub Pages site |
+| `venorn-game-client/` | TypeScript and three.js web client. Its build output is the GitHub Pages site |
 | `openspec/` | Specs, and the change proposals that precede each piece of work |
 
 ## Setting up
@@ -29,6 +31,9 @@ List every task with `mise tasks --all`.
 # Turn the source image into models, adjustment criteria and scene layers
 mise //venorn-asset-pipeline:build
 
+# Download the asset set the published site is built with, in place of running the pipeline
+mise //venorn-game-client:fetch-assets
+
 # Open the scene in a browser and pin things to the skull
 mise //venorn-game-client:dev
 
@@ -39,7 +44,16 @@ mise //venorn-game-client:phone
 mise //:check
 ```
 
-The pipeline downloads about 3 GB of model weights from Hugging Face the first time it runs.
+The pipeline downloads about 3 GB of model weights from Hugging Face the first time it runs. To play or work on the client without it, run `fetch-assets` instead.
+
+## Publishing
+
+`.github/workflows/pages.yml` builds the client on every push to `main` that touches it and publishes it at https://albion-house.github.io/venorn/. A pull request that touches the client gets a build, without the deploy.
+
+Git ignores the asset set, so the workflow downloads it from a GitHub release. `VENORN_ASSETS_TAG` and `VENORN_ASSETS_SHA256` in `venorn-game-client/mise.toml` name the release and the file's checksum. After the pipeline exports a new asset set:
+
+1. Run `mise //venorn-game-client:publish-assets`. It attaches the set to a new release and rewrites those two lines.
+2. Commit `venorn-game-client/mise.toml` and merge it to `main`. The push publishes the site with the new set.
 
 The `phone` task prints the addresses to open. It serves the built site, so run it again after a change.
 
