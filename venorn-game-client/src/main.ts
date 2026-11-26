@@ -6,7 +6,8 @@ import { watchGestures, type Hit } from "./gestures";
 import { applySettings, createPlaced, defaultSettings, throb, type Placed } from "./placement";
 import { buildMeadow, gustAt, type Meadow } from "./meadow";
 import { buildSurroundings, type Surroundings } from "./scene";
-import { playBirdCall, playPin, playRemove, setGust, setSound, startWind } from "./sound";
+import { playBirdCall, playGlitter, playPin, playRemove, setGust, setSound, startWind } from "./sound";
+import { buildSurprises, SPEW_SECONDS, type Surprises } from "./surprises";
 import type { Criteria, Manifest, Range, Settings } from "./types";
 import * as ui from "./ui";
 import { say } from "./ui";
@@ -24,6 +25,17 @@ const PAN_REACH = STRUCTURE_SIZE * 0.8;
 // One press of an arrow key resizes a thing by this factor, and one press of a bracket turns it this far.
 const KEY_RESIZE = 1.08;
 const KEY_TURN = 15;
+// The scene is fully lush once this many things are on the structure, and it follows them over a few seconds.
+const LUSH_AT = 24;
+const LUSH_SECONDS = 2.5;
+// The first rabbit comes when this many things are on the structure. After it, a rabbit
+// may come when a thing is placed, at this chance, and no sooner than this many seconds after the last.
+const RABBIT_AT = 6;
+const RABBIT_CHANCE = 0.3;
+const RABBIT_REST = 100;
+// This many things along the spike set off a spew of glitter, at most once in this many seconds.
+const IN_A_ROW = 3;
+const SPEW_REST = 300;
 // The ring around a selected thing is at least this many pixels in radius.
 const MIN_RING = 16;
 // A tap this many pixels from the middle of a thing still counts as a tap on it.
@@ -66,6 +78,14 @@ let structure: THREE.Mesh;
 let manifest: Manifest;
 let surroundings: Surroundings | undefined;
 let meadow: Meadow | undefined;
+let surprises: Surprises | undefined;
+// How lush the scene is, from 0 at the start to 1, and the last moment that was drawn.
+let lush = 0;
+let clock = 0;
+let rabbits = 0;
+let lastRabbit = -Infinity;
+let lastSpew = -Infinity;
+let rowBest = 0;
 let bareTexture: THREE.Texture | null = null;
 let paintedTexture: THREE.Texture | undefined;
 // Where across the view each bird call came from, kept so a test can count them.
@@ -252,6 +272,46 @@ function turnThing(thing: Placed, degrees: number): void {
   reshape(thing);
 }
 
+/** How lush the scene is on its way to being, from the number of things on the structure. */
+function lushness(): number {
+  return Math.min(1, placed.length / LUSH_AT);
+}
+
+/** Things lined up along the spike set off a spew of glitter. */
+function checkRow(): void {
+  if (!surprises?.spike) return;
+  const row = surprises.alongSpike(placed.map((entry) => entry.thing.point));
+  const grew = row >= IN_A_ROW && row > rowBest;
+  rowBest = row;
+  const now = performance.now() / 1000;
+  if (!grew || now - lastSpew < SPEW_REST) return;
+  lastSpew = now;
+  surprises.spew();
+  playGlitter(1, SPEW_SECONDS);
+  say(`${row} in a row on the ${surprises.spike}`);
+}
+
+function sendRabbit(): boolean {
+  if (!surprises?.rabbit(camera, surroundings?.gapNear(camera))) return false;
+  rabbits++;
+  lastRabbit = performance.now() / 1000;
+  // A flock crosses the gap the rabbit is making for.
+  surroundings?.flockBy(clock + 5);
+  return true;
+}
+
+/** The scene answers a thing being placed: a puff of glitter, and now and then something more. */
+function decorated(): void {
+  const strength = lushness();
+  surprises?.puff(strength);
+  playGlitter(strength * 0.5);
+  checkRow();
+  const now = performance.now() / 1000;
+  const due =
+    rabbits === 0 ? placed.length >= RABBIT_AT : now - lastRabbit >= RABBIT_REST && Math.random() < RABBIT_CHANCE;
+  if (due) sendRabbit();
+}
+
 function takeOff(thing: Placed): void {
   unpin(thing);
   playRemove();
@@ -288,6 +348,7 @@ function arrangeAsPainted(): void {
     }
   }
   say(`Arranged ${placed.length} things as painted, on both sides`);
+  decorated();
 }
 
 const seen = new THREE.Vector3();
@@ -366,6 +427,7 @@ function place(hit: Hit): void {
       ? "Drag it to move it, scroll to resize, Shift+scroll to turn. Click it for more"
       : "Drag it to move it, pinch to resize, twist to turn. Tap it for more",
   );
+  decorated();
 }
 
 function watchKeys(): void {
@@ -449,6 +511,16 @@ async function start(): Promise<void> {
     scene.background = new THREE.Color(0x6f93c9);
   }
 
+  surprises = buildSurprises({
+    structure,
+    structureSize: STRUCTURE_SIZE,
+    halfDepth: manifest.structure.thickness * STRUCTURE_SIZE,
+    features: manifest.structure.features ?? [],
+    heightAt: (radius) => meadow?.heightAt(radius) ?? -0.4 * STRUCTURE_SIZE,
+    reach: (surroundings?.outerRadius ?? VIEW_DISTANCE * 3) * 0.6,
+  });
+  scene.add(surprises.group);
+
   ui.buildDock(categories, chooseCategory);
   show(0);
   ui.watchMenu();
@@ -483,6 +555,8 @@ async function start(): Promise<void> {
       controls.enabled = on;
     },
     shaping: (on) => {
+      // A thing that was dragged may now lie along the spike.
+      if (shaping && !on) checkRow();
       shaping = on;
     },
   });
@@ -522,11 +596,17 @@ async function start(): Promise<void> {
   const reach = new THREE.Vector3(PAN_REACH, PAN_REACH, PAN_REACH);
   const farthest = reach.clone().negate();
   const draw = (seconds: number): void => {
+    // The scene grows toward its lushness a little each frame.
+    const step = THREE.MathUtils.clamp(seconds - clock, 0, 0.1);
+    clock = seconds;
+    lush += (lushness() - lush) * (1 - Math.exp(-step / LUSH_SECONDS));
+    meadow?.setGrowth(lush);
     for (const thing of stale) applySettings(thing, structure, STRUCTURE_SIZE);
     stale.clear();
     for (const { thing, pinnedAt } of placed) throb(thing, seconds, performance.now() / 1000 - pinnedAt);
     surroundings?.update(seconds, camera);
     meadow?.update(seconds);
+    surprises?.update(seconds, camera, renderer.domElement.height);
     setGust(gustAt(seconds));
     controls.target.clamp(farthest, reach);
     controls.update();
@@ -534,7 +614,11 @@ async function start(): Promise<void> {
     onScreen = selected && whereOnScreen(selected);
     ui.placeSelection(onScreen, wheelOpen && !shaping);
   };
-  renderer.setAnimationLoop((milliseconds) => draw(milliseconds / 1000));
+  // A test holds the loop still and draws each frame itself, at the moments it chooses.
+  let held = false;
+  renderer.setAnimationLoop((milliseconds) => {
+    if (!held) draw(milliseconds / 1000);
+  });
 
   // Lets a test or the browser console drive the page. A browser stops drawing a page
   // it is not showing, so a test calls draw itself.
@@ -546,7 +630,17 @@ async function start(): Promise<void> {
       chooseCategory,
       chooseVariation,
       select,
-      state: () => ({ category, variation, selected, wheelOpen, designOpen, onScreen }),
+      state: () => ({ category, variation, selected, wheelOpen, designOpen, onScreen, lush, rowBest, rabbits }),
+      surprises,
+      sendRabbit,
+      hold: (on: boolean) => {
+        held = on;
+      },
+      // Jump the scene to the lushness it is growing toward, or to a given one.
+      settle: (to?: number) => {
+        lush = to ?? lushness();
+        meadow?.setGrowth(lush);
+      },
       arrangeAsPainted,
       frontView,
       lookFrom,

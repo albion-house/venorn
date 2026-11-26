@@ -11,6 +11,10 @@ export interface Surroundings {
   innerRadius: number;
   outerRadius: number;
   update(seconds: number, camera: THREE.Camera): void;
+  /** The direction of the gap in the far layer nearest to where the camera looks, as an angle from the front. */
+  gapNear(camera: THREE.Camera): number | undefined;
+  /** Bring the next flock forward, so that it crosses no later than this moment. */
+  flockBy(seconds: number): void;
 }
 
 // The sun goes once around the sky in this many seconds.
@@ -319,12 +323,16 @@ export async function buildSurroundings(
   const looking = new THREE.Vector3();
   const flock = new THREE.Vector3();
 
-  function startFlight(seconds: number, camera: THREE.Camera): void {
-    // The flock crosses the gap nearest to where the camera is looking.
+  function nearestGap(camera: THREE.Camera): Gap {
     camera.getWorldDirection(looking);
     const facing = Math.atan2(looking.x, looking.z);
     const turnTo = (angle: number): number => Math.abs(((angle - facing + Math.PI * 3) % TURN) - Math.PI);
-    const gap = gaps.reduce((nearest, candidate) => (turnTo(candidate.angle) < turnTo(nearest.angle) ? candidate : nearest));
+    return gaps.reduce((nearest, candidate) => (turnTo(candidate.angle) < turnTo(nearest.angle) ? candidate : nearest));
+  }
+
+  function startFlight(seconds: number, camera: THREE.Camera): void {
+    // The flock crosses the gap nearest to where the camera is looking.
+    const gap = nearestGap(camera);
     flight = {
       gap,
       from: seconds,
@@ -384,5 +392,15 @@ export async function buildSurroundings(
     fly(seconds, camera);
   }
 
-  return { group, sun, innerRadius, outerRadius, update };
+  return {
+    group,
+    sun,
+    innerRadius,
+    outerRadius,
+    update,
+    gapNear: (camera) => (gaps.length > 0 ? nearestGap(camera).angle : undefined),
+    flockBy: (seconds) => {
+      if (!flight) nextFlight = Math.min(nextFlight, seconds);
+    },
+  };
 }

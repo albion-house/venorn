@@ -7,6 +7,10 @@ import type { Plant, SceneLayers } from "./types";
 export interface Meadow {
   group: THREE.Group;
   update(seconds: number): void;
+  /** How grown the meadow is: 0 for low shoots, 1 for full height. */
+  setGrowth(growth: number): void;
+  /** The height of the ground at a distance from the middle of the scene. */
+  heightAt(radius: number): number;
 }
 
 const TURN = Math.PI * 2;
@@ -24,7 +28,13 @@ const WIND = new THREE.Vector2(1, 0.35).normalize();
 
 interface PaperUniforms {
   uTime: { value: number };
+  uGrow: { value: number };
 }
+
+// A plant that has not grown yet stands at this share of its full size.
+const SHOOT = 0.16;
+// A ring of cut paper that has not grown yet shows this share of its height above the ground.
+const FRINGE = 0.2;
 
 interface PaperOptions {
   // Extra softness for the whole picture, in mipmap levels.
@@ -33,6 +43,8 @@ interface PaperOptions {
   sway: number;
   // Whether each instance curls and leans a little differently.
   bendy: boolean;
+  // How far the paper sinks into the ground before it has grown, in its own units.
+  sink: number;
 }
 
 /** A small, stable random number generator, so the meadow grows the same way every time. */
@@ -51,6 +63,7 @@ const GUST_PACE = 0.31;
 
 const SWAY_VERTEX = /* glsl */ `
   #define GUST_PACE ${GUST_PACE}
+  #define SHOOT ${SHOOT}
   vec3 transformed = vec3(position);
   float paperHeight = uv.y;
   #ifdef USE_INSTANCING
@@ -63,10 +76,22 @@ const SWAY_VERTEX = /* glsl */ `
     vec3 paperThrough = vec3(0.0, 0.0, 1.0);
   #endif
   float paperSeed = fract(sin(dot(paperOrigin.xz, vec2(12.9898, 78.233))) * 43758.5453);
+  #ifdef USE_INSTANCING
+    // A plant starts as a low shoot and grows about its root. Each plant takes its own turn.
+    float paperGrown = smoothstep(paperSeed * 0.55, paperSeed * 0.55 + 0.45, uGrow);
+    float paperSize = mix(SHOOT, 1.0, paperGrown);
+    transformed.xy *= paperSize;
+  #else
+    // A ring of cut paper rises out of the ground, one stretch after another.
+    float paperTurn = 0.5 + 0.5 * sin(atan(paperOrigin.z, paperOrigin.x) * 5.0 + length(paperOrigin.xz));
+    float paperGrown = smoothstep(0.0, 1.0, uGrow * 1.3 - 0.3 * paperTurn);
+    float paperSize = 1.0;
+    transformed.y -= (1.0 - paperGrown) * uSink;
+  #endif
   #ifdef PAPER_BENDY
     // Every plant's paper curls and leans a little differently.
     float paperCurl = (paperSeed - 0.5) * 0.9;
-    float paperLean = (fract(paperSeed * 7.13) - 0.5) * 0.5;
+    float paperLean = (fract(paperSeed * 7.13) - 0.5) * 0.5 * paperSize;
     transformed.z += paperCurl * transformed.x * transformed.x * (0.5 + paperHeight) + paperLean * paperHeight * paperHeight;
   #endif
   // Gusts travel across the meadow, and each plant swings in its own time.
@@ -74,7 +99,8 @@ const SWAY_VERTEX = /* glsl */ `
   float paperGust = 0.55 + 0.45 * sin(uTime * GUST_PACE + paperAlong * 0.22);
   float paperSwing = paperHeight * paperHeight * paperGust
     * (sin(uTime * 1.25 + paperAlong * 0.9 + paperSeed * 6.283) + 0.35 * sin(uTime * 2.9 + paperSeed * 40.0));
-  vec3 paperPush = vec3(uWind.x, 0.0, uWind.y) * paperSwing * uSway;
+  // A grown meadow sways further than a meadow of shoots.
+  vec3 paperPush = vec3(uWind.x, 0.0, uWind.y) * paperSwing * uSway * paperSize * mix(0.4, 1.3, uGrow);
   transformed.x += dot(paperPush, paperAcross) / dot(paperAcross, paperAcross);
   transformed.z += dot(paperPush, paperThrough) / dot(paperThrough, paperThrough);
 `;
@@ -108,7 +134,7 @@ const PAPER_FRAGMENT = /* glsl */ `
 `;
 
 class Paper {
-  readonly time: PaperUniforms = { uTime: { value: 0 } };
+  readonly time: PaperUniforms = { uTime: { value: 0 }, uGrow: { value: 0 } };
   private readonly haze: THREE.Color;
   private readonly blur: THREE.Vector3;
 
@@ -126,14 +152,16 @@ class Paper {
       ...this.time,
       uWind: { value: WIND },
       uSway: { value: options.sway },
+      uSink: { value: options.sink },
       uSoft: { value: options.soft },
       uBlur: { value: this.blur },
       uHaze: { value: this.haze },
       uTexel: { value: new THREE.Vector2(1 / size.width, 1 / size.height) },
       uFade: { value: new THREE.Vector2(0.25, 1.1) },
     };
+    const moving = "uniform float uTime; uniform vec2 uWind; uniform float uSway; uniform float uGrow; uniform float uSink;";
     const declare = /* glsl */ `
-      uniform float uTime; uniform vec2 uWind; uniform float uSway;
+      ${moving}
       varying float vPaperRadius; varying float vPaperView;
     `;
     const defines = options.bendy ? { PAPER_BENDY: "" } : {};
@@ -174,7 +202,7 @@ class Paper {
     shadow.onBeforeCompile = (shader) => {
       Object.assign(shader.uniforms, uniforms);
       shader.vertexShader = shader.vertexShader
-        .replace("#include <common>", `#include <common>\nuniform float uTime; uniform vec2 uWind; uniform float uSway;`)
+        .replace("#include <common>", `#include <common>\n${moving}`)
         .replace("#include <begin_vertex>", SWAY_VERTEX);
     };
     return { paper, shadow };
@@ -221,7 +249,12 @@ function buildRing(
   own.repeat.x = copies;
   own.needsUpdate = true;
   const geometry = new THREE.CylinderGeometry(radius, radius, height, copies * 16, 6, true, turn);
-  const { paper: material } = paper.materials(own, { soft: 0, sway: height * 0.05, bendy: false });
+  const { paper: material } = paper.materials(own, {
+    soft: 0,
+    sway: height * 0.05,
+    bendy: false,
+    sink: height * (1 - FRINGE),
+  });
   const ring = new THREE.Mesh(geometry, material);
   ring.position.y = base + height / 2;
   ring.receiveShadow = true;
@@ -318,7 +351,7 @@ export async function buildMeadow(
   await Promise.all(
     [...perPlant].map(async ([plant, matrices]) => {
       const texture = await loader.loadAsync(assets + plant.image);
-      const { paper: material, shadow } = paper.materials(texture, { soft: 0.6, sway: 0.07, bendy: true });
+      const { paper: material, shadow } = paper.materials(texture, { soft: 0.6, sway: 0.07, bendy: true, sink: 0 });
       // The card's bottom edge is the ground, and its root is the point it turns and stands on.
       const card = new THREE.PlaneGeometry(1, 1, 4, 6);
       card.translate(0.5 - plant.root, 0.5, 0);
@@ -338,5 +371,9 @@ export async function buildMeadow(
     update(seconds: number): void {
       paper.time.uTime.value = seconds;
     },
+    setGrowth(growth: number): void {
+      paper.time.uGrow.value = growth;
+    },
+    heightAt: (radius: number) => groundHeight(radius, level, flat),
   };
 }
