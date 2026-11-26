@@ -3,6 +3,7 @@ import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { MeshBVH, acceleratedRaycast } from "three-mesh-bvh";
 import { applySettings, createPlaced, throb, type Placed } from "./placement";
+import { buildMeadow, type Meadow } from "./meadow";
 import { buildSurroundings, type Surroundings } from "./scene";
 import { playPin, playRemove, setWind } from "./sound";
 import type { Criteria, Manifest, Range, Settings } from "./types";
@@ -58,6 +59,7 @@ const placed: { thing: Placed; pinnedAt: number }[] = [];
 let structure: THREE.Mesh;
 let manifest: Manifest;
 let surroundings: Surroundings | undefined;
+let meadow: Meadow | undefined;
 let bareTexture: THREE.Texture | null = null;
 let paintedTexture: THREE.Texture | undefined;
 let chosen: string | undefined;
@@ -367,7 +369,8 @@ async function start(): Promise<void> {
 
   if (manifest.scene) {
     surroundings = await buildSurroundings(manifest.scene, ASSETS, STRUCTURE_SIZE, VIEW_DISTANCE);
-    scene.add(surroundings.group);
+    meadow = await buildMeadow(manifest.scene, ASSETS, STRUCTURE_SIZE, surroundings.outerRadius);
+    scene.add(surroundings.group, meadow.group);
   } else {
     const sun = new THREE.DirectionalLight(0xfff1d6, 2.2);
     sun.position.set(-3, 4, 6);
@@ -406,6 +409,7 @@ async function start(): Promise<void> {
   const draw = (seconds: number): void => {
     for (const { thing, pinnedAt } of placed) throb(thing, seconds, performance.now() / 1000 - pinnedAt);
     surroundings?.update(seconds);
+    meadow?.update(seconds);
     controls.target.clamp(farthest, reach);
     controls.update();
     renderer.render(scene, camera);
