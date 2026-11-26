@@ -38,6 +38,8 @@ export interface Scene {
   /** The pointer left the structure in the middle of a stroke. */
   strokeLift(): void;
   strokeEnd(): void;
+  /** End the stroke and take it back: it was only the first finger of a zoom. */
+  strokeCancel(): void;
   /** A gesture on a thing has started or ended. */
   shaping(on: boolean): void;
 }
@@ -46,6 +48,10 @@ export interface Scene {
 const TAP_SLOP = 6;
 // Two fingers or a scroll within this many pixels of the selected thing act on it.
 const REACH = 110;
+// With the pen chosen, a stroke is taken back when a second finger comes down within this many milliseconds
+// of the first, before the first has gone this many pixels. The stroke was only the start of a zoom.
+const ZOOM_START_TIME = 500;
+const ZOOM_START_SLOP = 20;
 
 interface Spread {
   distance: number;
@@ -59,7 +65,9 @@ function spread(a: { x: number; y: number }, b: { x: number; y: number }): Sprea
 export function watchGestures(scene: Scene): void {
   const { canvas } = scene;
   const pointers = new Map<number, { x: number; y: number }>();
-  let down: { x: number; y: number; button: number; thing?: Placed } | undefined;
+  let down: { x: number; y: number; button: number; time: number; thing?: Placed } | undefined;
+  // How far the first finger has gone from where it came down.
+  let farthest = 0;
   let mode: "camera" | "move" | "shape" | "paint" = "camera";
   let moved = false;
   let last: Spread | undefined;
@@ -79,8 +87,9 @@ export function watchGestures(scene: Scene): void {
       if (pointers.size === 1 && event.button === 0 && scene.painting()) {
         // With a pen chosen, a press on the structure starts a stroke. A press anywhere else moves the camera,
         // and so does every press while the pen is put aside to turn the view.
-        down = { x: event.clientX, y: event.clientY, button: event.button };
+        down = { x: event.clientX, y: event.clientY, button: event.button, time: event.timeStamp };
         moved = false;
+        farthest = 0;
         const hit = scene.turning() ? undefined : scene.surfaceAt(event.clientX, event.clientY);
         if (hit) {
           mode = "paint";
@@ -94,6 +103,7 @@ export function watchGestures(scene: Scene): void {
           x: event.clientX,
           y: event.clientY,
           button: event.button,
+          time: event.timeStamp,
           thing: scene.thingAt(event.clientX, event.clientY),
         };
         moved = false;
@@ -108,8 +118,11 @@ export function watchGestures(scene: Scene): void {
       }
       moved = true;
       if (mode === "paint") {
-        // A second finger ends the stroke, and the two fingers zoom and pan.
-        scene.strokeEnd();
+        // A second finger ends the stroke, and the two fingers zoom and pan. A stroke that had barely
+        // begun was only the first finger of the zoom, so it is taken back.
+        const begun = down && event.timeStamp - down.time <= ZOOM_START_TIME && farthest < ZOOM_START_SLOP;
+        if (begun) scene.strokeCancel();
+        else scene.strokeEnd();
         mode = "camera";
         return;
       }
@@ -132,6 +145,7 @@ export function watchGestures(scene: Scene): void {
       if (!pointer) return;
       pointer.x = event.clientX;
       pointer.y = event.clientY;
+      if (down && pointers.size === 1) farthest = Math.max(farthest, Math.hypot(pointer.x - down.x, pointer.y - down.y));
       if (down && !moved && Math.hypot(pointer.x - down.x, pointer.y - down.y) >= TAP_SLOP) {
         moved = true;
         if (mode === "move") scene.shaping(true);

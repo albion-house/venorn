@@ -1,5 +1,9 @@
 :root {
   --panel: rgb(24 30 38 / 0.72);
+  /* Room at the left and right edges. A phone turned on its side keeps its notch or island and its rounded corners
+     out of the way with safe-area insets, which are 0 on a phone held upright and on a computer. */
+  --left: max(10px, env(safe-area-inset-left));
+  --right: max(10px, env(safe-area-inset-right));
   --ink: #f6efe0;
   --accent: #e9b84a;
   font-family: Georgia, "Times New Roman", serif;
@@ -39,7 +43,7 @@ label {
 #more {
   position: fixed;
   top: 10px;
-  left: 10px;
+  left: var(--left);
   width: 40px;
   height: 40px;
   border: 0;
@@ -53,7 +57,7 @@ label {
 #menu {
   position: fixed;
   top: 58px;
-  left: 10px;
+  left: var(--left);
   display: grid;
   gap: 6px;
 }
@@ -71,8 +75,8 @@ label {
 #status {
   position: fixed;
   top: 10px;
-  left: 60px;
-  right: 10px;
+  left: calc(var(--left) + 50px);
+  right: var(--right);
   margin: 0;
   padding: 10px 0;
   font-size: 0.85rem;
@@ -167,7 +171,7 @@ label {
   aspect-ratio: 1;
 }
 
-/* The wheel that opens around a selected thing. The thing stays reachable in the middle. */
+/* The wheel that opens around a selected thing. Its buttons stand clear of the thing, so the thing stays reachable in the middle. */
 #wheel {
   position: fixed;
   left: 0;
@@ -188,22 +192,6 @@ label {
   font-size: 0.72rem;
   cursor: pointer;
   pointer-events: auto;
-}
-
-#wheel [data-action="kind"] {
-  transform: translate(0, calc(-1 * var(--reach, 78px)));
-}
-
-#wheel [data-action="variation"] {
-  transform: translate(var(--reach, 78px), 0);
-}
-
-#wheel [data-action="design"] {
-  transform: translate(0, var(--reach, 78px));
-}
-
-#wheel [data-action="remove"] {
-  transform: translate(calc(-1 * var(--reach, 78px)), 0);
 }
 
 /* A dashed circle marks the selected thing. */
