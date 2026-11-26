@@ -1,8 +1,11 @@
 // Ambient music that the placed things play. Each thing has a note of its own
 // that comes around on a slow loop, like tape loops of different lengths. The
 // note sounds from where the thing sits, so it is louder with the camera near.
+// The notes are scheduled ahead on the audio clock from a timer as well as from
+// the draw loop, because a browser stops drawing a page it is not showing.
 
 import * as THREE from "three";
+import { AHEAD } from "./ahead";
 
 /** A placed thing as the music sees it. */
 export interface Emitter {
@@ -23,10 +26,14 @@ export interface Sounded {
 
 export interface Music {
   /**
-   * Call once a frame. level runs from 0 for silence to 1. Returns the things
-   * whose notes began in this frame.
+   * Call once a frame with the things on the structure. level runs from 0 for
+   * silence to 1. Returns the things whose notes have begun since the last call.
    */
-  update(seconds: number, emitters: Emitter[], level: number, camera: THREE.Camera): Sounded[];
+  update(emitters: Emitter[], level: number, camera: THREE.Camera): Sounded[];
+  /** Schedule the notes due soon. Call it from a timer, which a hidden page still runs. */
+  schedule(): void;
+  /** How many notes were scheduled, and how many were silenced because their thing was removed first. */
+  readonly counts: { scheduled: number; silenced: number };
 }
 
 // The notes the things choose from: D major pentatonic over three octaves.
@@ -40,6 +47,8 @@ const VOICES = 16;
 // A note is at full strength with the camera this close, in world units, and falls away beyond it.
 const NEAR = 2.2;
 const FALL = 1.4;
+// A note due longer ago than this, in seconds, is passed over: the page was frozen, or the timer was held up.
+const LATE = 1.5;
 
 interface Partial {
   ratio: number;
@@ -136,8 +145,13 @@ function buildEcho(context: BaseAudioContext): ConvolverNode {
 /**
  * Build the music on an audio context. Notes go to the destination through a
  * shared echo. Nothing sounds until update is called with things and a level.
+ * clock gives the time in seconds that the loops are kept in.
  */
-export function createMusic(context: BaseAudioContext, destination: AudioNode): Music {
+export function createMusic(
+  context: BaseAudioContext,
+  destination: AudioNode,
+  clock: () => number = () => performance.now() / 1000,
+): Music {
   // Everything the things play passes through one level, an echo and a limiter.
   const level = context.createGain();
   level.gain.value = 0;
@@ -174,6 +188,11 @@ export function createMusic(context: BaseAudioContext, destination: AudioNode): 
   }
 
   const loops = new WeakMap<object, { next: number; period: number }>();
+  // Notes that are scheduled and not yet shown: whose they are, when they start on the clock, and where they sound.
+  const pending: { key: object; at: number; seconds: number; out?: AudioNode }[] = [];
+  const counts = { scheduled: 0, silenced: 0 };
+  let emitters: Emitter[] = [];
+  let strength = 0;
   const position = new THREE.Vector3();
   const forward = new THREE.Vector3();
   const up = new THREE.Vector3();
@@ -201,12 +220,13 @@ export function createMusic(context: BaseAudioContext, destination: AudioNode): 
     }
   }
 
-  function play(emitter: Emitter): number {
+  /** Play a thing's note after a delay in seconds. Returns how long it rings and the node it sounds through. */
+  function play(emitter: Emitter, delay: number): { seconds: number; out?: AudioNode } {
     const { frequency, timbre, seconds } = noteFor(emitter);
     // A context that has not been started by a tap would hold its notes and play them all at once later.
     const stopped = context instanceof AudioContext && context.state !== "running";
-    if (stopped || ringing >= VOICES) return seconds;
-    const now = context.currentTime + 0.02;
+    if (stopped || ringing >= VOICES) return { seconds };
+    const now = context.currentTime + Math.max(0.02, delay);
     const place = context.createPanner();
     place.panningModel = "equalpower";
     place.distanceModel = "inverse";
@@ -246,39 +266,71 @@ export function createMusic(context: BaseAudioContext, destination: AudioNode): 
       ringing--;
       place.disconnect();
     });
-    return seconds;
+    return { seconds, out: place };
+  }
+
+  function schedule(): void {
+    const now = clock();
+    const crowd = Math.max(1, emitters.length / FULL);
+    for (const emitter of emitters) {
+      const loop = loops.get(emitter.key);
+      if (!loop) continue;
+      while (loop.next < now + AHEAD) {
+        const at = loop.next;
+        loop.next = at + loop.period * crowd * (0.92 + 0.16 * Math.random());
+        // After the page was frozen, every loop is overdue at once. Those notes are passed over.
+        if (at < now - LATE) {
+          loop.next = now + Math.random() * loop.period * crowd;
+          continue;
+        }
+        if (strength <= 0.01) continue;
+        counts.scheduled++;
+        pending.push({ key: emitter.key, at, ...play(emitter, at - now) });
+      }
+    }
+    // Notes that started while nothing was drawn are not shown later.
+    for (let i = pending.length - 1; i >= 0; i--) {
+      if (pending[i].at < now - LATE) pending.splice(i, 1);
+    }
   }
 
   return {
-    update(seconds: number, emitters: Emitter[], strength: number, camera: THREE.Camera): Sounded[] {
+    update(list: Emitter[], to: number, camera: THREE.Camera): Sounded[] {
       listen(camera);
+      emitters = list;
+      strength = to;
       const soon = context.currentTime;
       level.gain.setTargetAtTime(2.6 * strength, soon, 1.5);
       drone.gain.setTargetAtTime(0.018 * strength * strength, soon, 3);
 
-      const sounded: Sounded[] = [];
+      const now = clock();
       const crowd = Math.max(1, emitters.length / FULL);
       const fresh = emitters.filter((emitter) => !loops.has(emitter.key)).length;
       for (const emitter of emitters) {
-        let loop = loops.get(emitter.key);
-        if (!loop) {
-          const period = LOOP[0] + (LOOP[1] - LOOP[0]) * Math.random();
-          // A thing placed alone sounds right away. Things placed together start spread out.
-          const wait = fresh <= 2 ? 0.3 + 0.6 * Math.random() : Math.random() * period * crowd;
-          loop = { next: seconds + wait, period };
-          loops.set(emitter.key, loop);
-        }
-        if (seconds < loop.next) continue;
-        const late = seconds - loop.next;
-        loop.next = seconds + loop.period * crowd * (0.92 + 0.16 * Math.random());
-        // After the page was hidden, every loop is overdue at once. Those notes are passed over.
-        if (late > 1.5) {
-          loop.next = seconds + Math.random() * loop.period * crowd;
-          continue;
-        }
-        if (strength > 0.01) sounded.push({ key: emitter.key, seconds: play(emitter) });
+        if (loops.has(emitter.key)) continue;
+        const period = LOOP[0] + (LOOP[1] - LOOP[0]) * Math.random();
+        // A thing placed alone sounds right away. Things placed together start spread out.
+        const wait = fresh <= 2 ? 0.3 + 0.6 * Math.random() : Math.random() * period * crowd;
+        loops.set(emitter.key, { next: now + wait, period });
       }
-      return sounded;
+      // A thing removed before its note starts makes no sound.
+      const present = new Set(emitters.map((emitter) => emitter.key));
+      for (let i = pending.length - 1; i >= 0; i--) {
+        const note = pending[i];
+        if (present.has(note.key)) continue;
+        if (note.at > now && note.out) {
+          note.out.disconnect();
+          counts.silenced++;
+        }
+        pending.splice(i, 1);
+      }
+      schedule();
+
+      const begun = pending.filter((note) => note.at <= now).sort((one, other) => one.at - other.at);
+      pending.splice(0, pending.length, ...pending.filter((note) => note.at > now));
+      return begun.map((note) => ({ key: note.key, seconds: note.seconds }));
     },
+    schedule,
+    counts,
   };
 }

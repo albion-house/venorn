@@ -59,6 +59,8 @@ const LAST_KEY = storageKey(ASSET_SET, "last-skull");
 const MIN_RING = 16;
 // A tap this many pixels from the middle of a thing still counts as a tap on it.
 const NEAR_MISS = 14;
+// The sound's timer runs this often, in milliseconds.
+const SOUND_TICK = 250;
 
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
 
@@ -374,7 +376,6 @@ function playMusic(seconds: number): void {
   // The music comes in sooner than the meadow grows, so the first few things can be heard.
   const sounded =
     music?.update(
-      seconds,
       placed.map((entry) => ({
         key: entry,
         position: entry.thing.point,
@@ -923,6 +924,8 @@ async function start(): Promise<void> {
   renderer.setAnimationLoop((milliseconds) => {
     if (!held) draw(milliseconds / 1000);
   });
+  // A browser stops drawing a page it is not showing but still runs its timers, so the sound keeps time with one.
+  window.setInterval(() => music?.schedule(), SOUND_TICK);
 
   // Lets a test or the browser console drive the page. A browser stops drawing a page
   // it is not showing, so a test calls draw itself.
@@ -950,6 +953,7 @@ async function start(): Promise<void> {
       links,
       pen,
       sendRabbit,
+      music: () => music,
       sounding: () => placed.filter((entry) => clock - entry.soundedAt < entry.rings).length,
       hold: (on: boolean) => {
         held = on;
