@@ -7,6 +7,8 @@ export interface Placed {
   criteria: Criteria;
   group: THREE.Group;
   mesh: THREE.Mesh;
+  /** How far the thing's colors are turned around the color wheel, in radians. */
+  tint: { value: number };
   pinHead?: THREE.Mesh;
   pinStem?: THREE.Mesh;
   /** Vertex positions of the model as the pipeline made it. */
@@ -38,6 +40,7 @@ export function defaultSettings(criteria: Criteria): Settings {
     standoff: attach.standoff.default,
     tilt: adjust.tilt.default,
     depth: adjust.depth.default,
+    hue: adjust.hue.default,
     conform: adjust.conform.default,
     fold: adjust.fold?.default ?? 0,
     bend: 0,
@@ -53,7 +56,8 @@ export function createPlaced(
   structureSize: number,
 ): Placed {
   const geometry = source.geometry.clone();
-  const mesh = new THREE.Mesh(geometry, source.material);
+  const tint = { value: 0 };
+  const mesh = new THREE.Mesh(geometry, tinted(source.material as THREE.MeshStandardMaterial, tint));
   mesh.castShadow = true;
   mesh.receiveShadow = true;
   const group = new THREE.Group();
@@ -63,6 +67,7 @@ export function createPlaced(
     criteria,
     group,
     mesh,
+    tint,
     rest: Float32Array.from(geometry.getAttribute("position").array),
     point: point.clone(),
     normal: normal.clone(),
@@ -79,9 +84,34 @@ export function createPlaced(
   return placed;
 }
 
+/** A copy of a model's material whose colors can be turned around the color wheel. */
+function tinted(base: THREE.MeshStandardMaterial, tint: { value: number }): THREE.MeshStandardMaterial {
+  const material = base.clone();
+  material.onBeforeCompile = (shader) => {
+    shader.uniforms.uTint = tint;
+    shader.fragmentShader = shader.fragmentShader
+      .replace("#include <common>", "#include <common>\nuniform float uTint;")
+      .replace(
+        "#include <map_fragment>",
+        /* glsl */ `#include <map_fragment>
+        {
+          // Turn the color about the gray axis, which keeps its lightness.
+          const vec3 gray = vec3(0.57735);
+          float turn = cos(uTint);
+          diffuseColor.rgb = diffuseColor.rgb * turn + cross(gray, diffuseColor.rgb) * sin(uTint)
+            + gray * dot(gray, diffuseColor.rgb) * (1.0 - turn);
+        }`,
+      );
+  };
+  // Every tinted material compiles to the same program, so they share one.
+  material.customProgramCacheKey = () => "venorn-tinted";
+  return material;
+}
+
 /** Recompute every vertex from the model's rest shape, its spot on the structure and the settings. */
 export function applySettings(placed: Placed, structure: THREE.Mesh, structureSize: number): void {
   const { criteria, settings, point, rest } = placed;
+  placed.tint.value = THREE.MathUtils.degToRad(settings.hue);
   const size = criteria.size.natural * structureSize * settings.scale;
   const standoff = settings.standoff * size;
 

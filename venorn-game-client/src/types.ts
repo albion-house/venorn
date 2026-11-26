@@ -24,6 +24,7 @@ export interface Criteria {
     spin: Range;
     tilt: Range;
     depth: Range;
+    hue: Range;
     conform: Range;
     fold?: Range;
     bend: { enabled: boolean; curve?: "cubic-bezier"; max?: number };
@@ -44,6 +45,8 @@ export interface Manifest {
   title: string;
   structure: { id: string; model: string; painted: string; thickness: number };
   kinds: { id: string; role: "pinned" | "printed"; models: ModelEntry[] }[];
+  // The groups the player chooses from, in the order of the number keys.
+  categories: { id: string; name: string; kinds: string[] }[];
   arrangement: { kind: string; x: number; y: number; size: number; angle: number }[];
   scene: SceneLayers | null;
 }
@@ -95,6 +98,7 @@ export interface Settings {
   standoff: number;
   tilt: number;
   depth: number;
+  hue: number;
   conform: number;
   fold: number;
   bend: number;

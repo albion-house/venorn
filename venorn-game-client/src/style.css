@@ -17,6 +17,14 @@ body {
   overflow: hidden;
   background: #0458a1;
   touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+button,
+label {
+  font: inherit;
+  color: var(--ink);
 }
 
 #scene {
@@ -27,143 +35,236 @@ body {
   display: block;
 }
 
-#tray {
+/* The menu of things used now and then, tucked behind one button. */
+#more {
   position: fixed;
-  top: 0;
-  bottom: 0;
-  left: 0;
-  width: 88px;
-  padding: 8px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  overflow-y: auto;
+  top: 10px;
+  left: 10px;
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: 50%;
   background: var(--panel);
-  touch-action: pan-y;
+  font-size: 1.3rem;
+  line-height: 1;
+  cursor: pointer;
 }
 
-#tray button {
-  flex: 0 0 auto;
-  width: 72px;
-  height: 72px;
+#menu {
+  position: fixed;
+  top: 58px;
+  left: 10px;
+  display: grid;
+  gap: 6px;
+}
+
+#menu button,
+#menu label {
+  padding: 8px 14px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--panel);
+  text-align: left;
+  cursor: pointer;
+}
+
+#status {
+  position: fixed;
+  top: 10px;
+  left: 60px;
+  right: 10px;
+  margin: 0;
+  padding: 10px 0;
+  font-size: 0.85rem;
+  text-shadow: 0 1px 3px rgb(0 0 0 / 0.7);
+  pointer-events: none;
+}
+
+/* The five categories. */
+#dock {
+  position: fixed;
+  left: 50%;
+  bottom: max(10px, env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  display: flex;
+  gap: 10px;
   padding: 6px;
+  border-radius: 999px;
+  background: var(--panel);
+}
+
+#dock button {
+  position: relative;
+  width: 58px;
+  height: 58px;
+  padding: 7px;
   border: 2px solid transparent;
-  border-radius: 12px;
+  border-radius: 50%;
   background: rgb(255 255 255 / 0.1);
   cursor: pointer;
 }
 
-#tray button[aria-pressed="true"] {
+#dock button[aria-pressed="true"] {
   border-color: var(--accent);
   background: rgb(255 255 255 / 0.28);
 }
 
-#tray img {
+#dock img,
+#strip img {
   width: 100%;
   height: 100%;
   object-fit: contain;
   pointer-events: none;
 }
 
-#actions {
-  position: fixed;
-  top: 8px;
-  left: 100px;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-}
-
-#actions button,
-#actions label,
-#adjust button {
-  padding: 8px 12px;
-  border: 0;
+#dock .key {
+  position: absolute;
+  top: -4px;
+  right: -2px;
+  min-width: 18px;
+  padding: 1px 4px;
   border-radius: 999px;
   background: var(--panel);
-  color: var(--ink);
-  font: inherit;
+  font-size: 0.7rem;
+}
+
+/* The variations of the chosen category, scrolled sideways. */
+#strip {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: calc(max(10px, env(safe-area-inset-bottom)) + 78px);
+  display: flex;
+  justify-content: safe center;
+  gap: 6px;
+  padding: 4px 12px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  touch-action: pan-x;
+}
+
+#strip button {
+  flex: 0 0 auto;
+  width: 46px;
+  height: 46px;
+  padding: 5px;
+  border: 2px solid transparent;
+  border-radius: 12px;
+  background: var(--panel);
   cursor: pointer;
 }
 
-#adjust {
+#strip button[aria-selected="true"] {
+  border-color: var(--accent);
+}
+
+/* The wheel that opens around a selected thing. The thing stays reachable in the middle. */
+#wheel {
   position: fixed;
-  top: 8px;
-  right: 8px;
-  width: 232px;
-  padding: 12px;
+  left: 0;
+  top: 0;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+
+#wheel button {
+  position: absolute;
+  width: 62px;
+  height: 62px;
+  margin: -31px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--panel);
+  font-size: 0.72rem;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+#wheel [data-action="kind"] {
+  transform: translate(0, calc(-1 * var(--reach, 78px)));
+}
+
+#wheel [data-action="variation"] {
+  transform: translate(var(--reach, 78px), 0);
+}
+
+#wheel [data-action="design"] {
+  transform: translate(0, var(--reach, 78px));
+}
+
+#wheel [data-action="remove"] {
+  transform: translate(calc(-1 * var(--reach, 78px)), 0);
+}
+
+/* A dashed circle marks the selected thing. */
+#ring {
+  position: fixed;
+  left: 0;
+  top: 0;
+  border: 2px dashed rgb(233 184 74 / 0.85);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+#wheel[hidden],
+#ring[hidden],
+#design[hidden],
+#menu[hidden] {
+  display: none;
+}
+
+/* The design bar: a row of settings and one slider, above the variations. */
+#design {
+  position: fixed;
+  left: 50%;
+  bottom: calc(max(10px, env(safe-area-inset-bottom)) + 138px);
+  transform: translateX(-50%);
+  width: min(460px, 100vw - 16px);
+  padding: 8px 10px;
   display: grid;
   gap: 8px;
-  border-radius: 12px;
+  border-radius: 16px;
   background: var(--panel);
 }
 
-#adjust h2 {
-  margin: 0;
-  font-size: 1rem;
-  font-weight: normal;
+#design .chips {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  touch-action: pan-x;
 }
 
-#adjust label {
-  display: grid;
-  grid-template-columns: 72px 1fr;
-  align-items: center;
-  gap: 8px;
-  font-size: 0.85rem;
-}
-
-#adjust input[type="range"] {
-  width: 100%;
-  accent-color: var(--accent);
-}
-
-#status {
-  position: fixed;
-  bottom: 8px;
-  left: 100px;
-  margin: 0;
-  padding: 6px 10px;
+#design button {
+  flex: 0 0 auto;
+  padding: 6px 12px;
+  border: 2px solid transparent;
   border-radius: 999px;
-  background: var(--panel);
+  background: rgb(255 255 255 / 0.14);
   font-size: 0.85rem;
+  cursor: pointer;
 }
 
-#status:empty {
-  display: none;
+#design button[aria-pressed="true"] {
+  border-color: var(--accent);
 }
 
-/* On a phone the tray runs along the bottom and scrolls sideways. */
+#design input[type="range"] {
+  width: 100%;
+  height: 28px;
+  margin: 0;
+  accent-color: var(--accent);
+  touch-action: none;
+}
+
 @media (max-width: 640px) {
-  #tray {
-    top: auto;
-    right: 0;
-    width: auto;
-    height: 88px;
-    flex-direction: row;
-    overflow: auto hidden;
-    touch-action: pan-x;
+  #dock {
+    gap: 6px;
   }
 
-  #actions {
-    left: 8px;
+  #dock button {
+    width: 54px;
+    height: 54px;
   }
-
-  #adjust {
-    top: auto;
-    bottom: 96px;
-    left: 8px;
-    right: 8px;
-    width: auto;
-  }
-
-  #status {
-    top: 100px;
-    bottom: auto;
-    left: 8px;
-  }
-}
-
-#adjust[hidden] {
-  display: none;
 }
