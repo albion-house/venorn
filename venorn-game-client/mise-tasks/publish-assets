@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+#MISE description="Upload the exported asset set to a GitHub release and point the site's build at it"
+#MISE dir="{{config_root}}"
+set -euo pipefail
+
+# Git ignores public/assets/, so the GitHub Pages build downloads the asset set
+# from a release instead. This packs the set the pipeline last exported, attaches
+# it to a new release, and writes the release's tag and checksum into this
+# directory's mise.toml. Commit mise.toml afterwards so the site builds with it.
+set_name="veneration-ornamentation"
+source_dir="public/assets/${set_name}"
+if [[ ! -f "${source_dir}/manifest.json" ]]; then
+  echo "There is no asset set in ${source_dir}. Run mise //venorn-asset-pipeline:build first." >&2
+  exit 1
+fi
+
+stamp="$(date -u +%Y%m%d-%H%M)"
+tag="assets-${set_name}-${stamp}"
+file="${set_name}.tar.gz"
+work="$(mktemp -d)"
+trap 'rm -rf "${work}"' EXIT
+
+# -h packs the files a symbolic link points to, as in a worktree that links to
+# the main checkout's asset set. COPYFILE_DISABLE keeps macOS's ._ files out.
+COPYFILE_DISABLE=1 tar -czhf "${work}/${file}" -C public/assets "${set_name}"
+sum="$(shasum -a 256 "${work}/${file}" | cut -d ' ' -f 1)"
+
+gh release create "${tag}" "${work}/${file}" \
+  --title "Asset set ${set_name} ${stamp}" \
+  --notes "The models, pictures and manifest the asset pipeline exported. The GitHub Pages build downloads this file with \`mise //venorn-game-client:fetch-assets\`. It is not a release of the game." \
+  --latest=false
+
+mise set --file mise.toml VENORN_ASSETS_TAG="${tag}" VENORN_ASSETS_SHA256="${sum}"
+echo "Released ${tag}. Commit venorn-game-client/mise.toml so the site builds with it."

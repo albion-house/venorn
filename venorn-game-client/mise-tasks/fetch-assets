@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+#MISE description="Download the asset set the site is built with, in place of running the pipeline"
+#MISE dir="{{config_root}}"
+#USAGE flag "--force" help="Replace an asset set that is already in public/assets/"
+set -euo pipefail
+
+# The release and checksum come from VENORN_ASSETS_TAG and VENORN_ASSETS_SHA256
+# in this directory's mise.toml. The publish-assets task writes them.
+set_name="veneration-ornamentation"
+target="public/assets/${set_name}"
+if [[ -e "${target}" && "${usage_force:-false}" != "true" ]]; then
+  echo "${target} is already here. Pass --force to replace it with ${VENORN_ASSETS_TAG}."
+  exit 0
+fi
+
+file="${set_name}.tar.gz"
+url="https://github.com/albion-house/venorn/releases/download/${VENORN_ASSETS_TAG}/${file}"
+work="$(mktemp -d)"
+trap 'rm -rf "${work}"' EXIT
+curl --fail --silent --show-error --location --retry 3 --output "${work}/${file}" "${url}"
+
+if command -v sha256sum >/dev/null 2>&1; then
+  sum="$(sha256sum "${work}/${file}" | cut -d ' ' -f 1)"
+else
+  sum="$(shasum -a 256 "${work}/${file}" | cut -d ' ' -f 1)"
+fi
+if [[ "${sum}" != "${VENORN_ASSETS_SHA256}" ]]; then
+  echo "${url} does not match the checksum in mise.toml." >&2
+  echo "  downloaded: ${sum}" >&2
+  echo "  expected:   ${VENORN_ASSETS_SHA256}" >&2
+  exit 1
+fi
+
+rm -rf "${target}"
+mkdir -p public/assets
+tar -xzf "${work}/${file}" -C public/assets
+echo "Unpacked ${VENORN_ASSETS_TAG} into ${target}."
