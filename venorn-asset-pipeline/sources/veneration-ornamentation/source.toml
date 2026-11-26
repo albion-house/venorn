@@ -1,0 +1,63 @@
+name = "veneration-ornamentation"
+title = "Veneration Ornamentation"
+
+[image]
+url = "https://fawnicorn.com/assets/art/veneration-ornamentation.jpg"
+sha256 = "cee2789a4be34d8a91ea36cc81c4d37f80cb5f64d472590a0368c8b5f89af402"
+
+# The surface that things are pinned to. Each prompt is looked for in the whole
+# image, and the parts found are joined into one model.
+[structure]
+id = "skull"
+prompts = ["skull", "horn"]
+# Relief depth as a fraction of the structure's longer side.
+thickness = 0.16
+
+# Each kind is a thing the player can put on the structure.
+#
+#   prompt      words the detector looks for
+#   looks_like  a short description the classifier uses to tell kinds apart
+#   role        "pinned" is a solid thing held on with a pin;
+#               "printed" is a flat motif that follows the surface
+#   exemplars   how many of the instances found become models
+#   thickness   relief depth as a fraction of the thing's shorter side
+
+[[kinds]]
+id = "butterfly"
+prompt = "butterfly"
+looks_like = "a butterfly"
+role = "pinned"
+exemplars = 2
+thickness = 0.10
+
+[[kinds]]
+id = "candy"
+prompt = "candy"
+looks_like = "a wrapped candy with twisted wrapper ends"
+role = "pinned"
+exemplars = 3
+thickness = 0.45
+
+[[kinds]]
+id = "capsule"
+prompt = "pill"
+looks_like = "a two-colored medicine capsule"
+role = "pinned"
+exemplars = 2
+thickness = 0.6
+
+[[kinds]]
+id = "bead"
+prompt = "bead"
+looks_like = "a round bead on a pin"
+role = "pinned"
+exemplars = 2
+thickness = 0.6
+
+[[kinds]]
+id = "flower"
+prompt = "flower"
+looks_like = "a flower"
+role = "printed"
+exemplars = 4
+thickness = 0.06

@@ -3,3 +3,4 @@
 # Python releases arrive later.
 python = "3.13"
 uv = "latest"
+ruff = "latest"

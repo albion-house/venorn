@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+#MISE description="Download a source image and check it against its recorded checksum"
+#MISE depends=[":install"]
+#MISE dir="{{config_root}}"
+#USAGE arg "[source]" help="Name of a directory under sources/" default="veneration-ornamentation"
+set -euo pipefail
+exec uv run venorn-assets fetch "${usage_source}"
