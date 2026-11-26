@@ -50,6 +50,39 @@ def export(source: Source) -> None:
         for instance in catalog["instances"]
     ]
 
+    def across(pixel: float) -> float:
+        return round((pixel - origin_x) * scale, 4)
+
+    def upward(row: float) -> float:
+        return round((origin_y - row) * scale, 4)
+
+    # The layers around the structure, placed in the structure's model units.
+    scene = None
+    layers_dir = source.stage_dir("layers")
+    if (layers_dir / "layers.json").exists():
+        found = json.loads((layers_dir / "layers.json").read_text())
+        scene = {
+            "layers": [
+                {
+                    "id": layer["id"],
+                    "role": layer["role"],
+                    "image": f"layer-{layer['id']}.png",
+                    "left": across(layer["box"][0]),
+                    "right": across(layer["box"][2]),
+                    "top": upward(layer["box"][1]),
+                    "bottom": upward(layer["box"][3]),
+                    "distance": layer["distance"],
+                    "motion": layer["motion"],
+                }
+                for layer in found["layers"]
+            ],
+            "backdrop": {
+                "id": found["backdrop"]["id"],
+                "stops": [[upward(row), color] for row, color in found["backdrop"]["rows"]],
+            },
+            "ground": {"y": upward(found["ground"]["row"]), "color": found["ground"]["color"]},
+        }
+
     manifest = {
         "source": source.name,
         "title": source.title,
@@ -61,6 +94,7 @@ def export(source: Source) -> None:
         },
         "kinds": kinds,
         "arrangement": arrangement,
+        "scene": scene,
     }
 
     out = client_assets_dir(source)
@@ -69,6 +103,9 @@ def export(source: Source) -> None:
     out.mkdir(parents=True)
     for path in (*models_dir.glob("*.glb"), *models_dir.glob("*.adjust.json"), *models_dir.glob("*.png")):
         shutil.copy2(path, out / path.name)
+    if scene is not None:
+        for layer in scene["layers"]:
+            shutil.copy2(layers_dir / f"{layer['id']}.png", out / layer["image"])
     (out / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
 
     total = sum(len(kind["models"]) for kind in kinds)

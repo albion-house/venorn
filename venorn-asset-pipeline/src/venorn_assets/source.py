@@ -26,7 +26,7 @@ class Kind:
     role: str
     exemplars: int = 1
     thickness: float = 0.3
-    adjust: dict = field(default_factory=dict)
+    criteria: dict = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -37,6 +37,18 @@ class Structure:
 
 
 @dataclass(frozen=True)
+class Scene:
+    ground_id: str
+    far_id: str
+    far_hue: tuple[float, float]
+    far_distance: float
+    floating_id: str
+    floating_distance: float
+    floating_motion: str
+    backdrop_id: str
+
+
+@dataclass(frozen=True)
 class Source:
     name: str
     title: str
@@ -44,6 +56,7 @@ class Source:
     image_sha256: str
     structure: Structure
     kinds: tuple[Kind, ...]
+    scene: Scene | None
     root: Path
 
     @property
@@ -91,8 +104,22 @@ def load_source(name: str, root: Path | None = None) -> Source:
                 role=entry["role"],
                 exemplars=int(entry.get("exemplars", 1)),
                 thickness=float(entry.get("thickness", 0.3)),
-                adjust=entry.get("adjust", {}),
+                criteria=entry.get("criteria", {}),
             )
+        )
+
+    scene = None
+    if "scene" in data:
+        declared = data["scene"]
+        scene = Scene(
+            ground_id=declared["ground"]["id"],
+            far_id=declared["far"]["id"],
+            far_hue=tuple(float(v) for v in declared["far"]["hue"]),
+            far_distance=float(declared["far"]["distance"]),
+            floating_id=declared["floating"]["id"],
+            floating_distance=float(declared["floating"]["distance"]),
+            floating_motion=declared["floating"].get("motion", "still"),
+            backdrop_id=declared["backdrop"]["id"],
         )
 
     structure = data["structure"]
@@ -107,5 +134,6 @@ def load_source(name: str, root: Path | None = None) -> Source:
             thickness=float(structure.get("thickness", 0.15)),
         ),
         kinds=tuple(kinds),
+        scene=scene,
         root=root,
     )

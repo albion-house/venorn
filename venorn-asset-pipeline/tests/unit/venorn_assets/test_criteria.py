@@ -58,3 +58,24 @@ def test_record_missing_a_field_fails_validation(measured):
 
     with pytest.raises(jsonschema.ValidationError):
         validate(record)
+
+
+def test_every_model_can_be_made_deeper_or_pressed_flat(measured):
+    for role in ("pinned", "printed"):
+        depth = criteria_for(role=role, **measured)["adjust"]["depth"]
+        assert depth["min"] < depth["default"] < depth["max"]
+
+
+def test_fold_is_offered_only_to_a_kind_that_declares_it(measured):
+    assert "fold" not in criteria_for(role="pinned", **measured)["adjust"]
+
+    measured["overrides"] = {"adjust": {"fold": {"default": 28.0, "min": 0.0, "max": 70.0}}}
+    assert criteria_for(role="pinned", **measured)["adjust"]["fold"]["default"] == 28.0
+
+
+def test_kind_can_override_how_it_attaches(measured):
+    measured["overrides"] = {"attach": {"standoff": {"default": 0.03, "min": 0.0, "max": 0.4}}}
+    record = criteria_for(role="pinned", **measured)
+
+    assert record["attach"]["standoff"]["default"] == 0.03
+    assert record["attach"]["pin"]["visible"] is True

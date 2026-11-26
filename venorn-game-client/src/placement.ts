@@ -17,9 +17,8 @@ export interface Placed {
   settings: Settings;
 }
 
-const FAR = 100;
-const TOWARD_STRUCTURE = new THREE.Vector3(0, 0, -1);
 const WORLD_UP = new THREE.Vector3(0, 1, 0);
+const WORLD_FRONT = new THREE.Vector3(0, 0, 1);
 const PIN_GOLD = new THREE.MeshStandardMaterial({
   color: 0xd9a441,
   emissive: 0xffc04d,
@@ -38,16 +37,12 @@ export function defaultSettings(criteria: Criteria): Settings {
     spin: adjust.spin.default,
     standoff: attach.standoff.default,
     tilt: adjust.tilt.default,
+    depth: adjust.depth.default,
     conform: adjust.conform.default,
+    fold: adjust.fold?.default ?? 0,
     bend: 0,
     mirror: false,
   };
-}
-
-/** The structure's surface straight behind a point, as seen from the front. */
-function surfaceDepth(structure: THREE.Mesh, x: number, y: number): number | undefined {
-  raycaster.set(new THREE.Vector3(x, y, FAR), TOWARD_STRUCTURE);
-  return raycaster.intersectObject(structure, false)[0]?.point.z;
 }
 
 export function createPlaced(
@@ -59,6 +54,8 @@ export function createPlaced(
 ): Placed {
   const geometry = source.geometry.clone();
   const mesh = new THREE.Mesh(geometry, source.material);
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
   const group = new THREE.Group();
   group.add(mesh);
 
@@ -73,9 +70,10 @@ export function createPlaced(
   };
 
   if (criteria.attach.pin.visible) {
-    const radius = 0.006 * structureSize;
+    const radius = 0.0045 * structureSize;
     placed.pinHead = new THREE.Mesh(new THREE.SphereGeometry(radius, 16, 12), PIN_GOLD.clone());
     placed.pinStem = new THREE.Mesh(new THREE.CylinderGeometry(radius * 0.22, radius * 0.22, 1, 8), PIN_GOLD);
+    placed.pinHead.castShadow = true;
     group.add(placed.pinHead, placed.pinStem);
   }
   return placed;
@@ -88,16 +86,20 @@ export function applySettings(placed: Placed, structure: THREE.Mesh, structureSi
   const standoff = settings.standoff * size;
 
   // A frame on the surface: right and top lie in it, out points away from it.
+  // On a surface that faces straight up or down, top leans toward the front of the scene.
   const out = placed.normal.clone();
-  const right = new THREE.Vector3().crossVectors(WORLD_UP, out).normalize();
+  const reference = Math.abs(out.dot(WORLD_UP)) > 0.95 ? WORLD_FRONT : WORLD_UP;
+  const right = new THREE.Vector3().crossVectors(reference, out).normalize();
   const top = new THREE.Vector3().crossVectors(out, right).normalize();
+  const inward = out.clone().negate();
   const tilt = THREE.MathUtils.degToRad(settings.tilt);
-  out.applyAxisAngle(right, -tilt);
-  top.applyAxisAngle(right, -tilt);
+  const lean = out.clone().applyAxisAngle(right, -tilt);
+  const leanTop = top.clone().applyAxisAngle(right, -tilt);
 
   const spin = THREE.MathUtils.degToRad(settings.spin);
   const cos = Math.cos(spin);
   const sin = Math.sin(spin);
+  const fold = Math.tan(THREE.MathUtils.degToRad(settings.fold));
 
   // Bending moves both inner control points of a cubic Bezier off the long axis by the same amount.
   const long = criteria.size.aspect >= 1 ? 0 : 1;
@@ -115,11 +117,15 @@ export function applySettings(placed: Placed, structure: THREE.Mesh, structureSi
 
   const positions = placed.mesh.geometry.getAttribute("position") as THREE.BufferAttribute;
   const rigid = new THREE.Vector3();
+  const onPlane = new THREE.Vector3();
+  const above = new THREE.Vector3();
   for (let i = 0; i < rest.length; i += 3) {
     let x = rest[i];
     let y = rest[i + 1];
-    const z = rest[i + 2] * size;
-    const offset = bendAt(long === 0 ? x : y) - bendAtAnchor;
+    const along = long === 0 ? x : y;
+    // Folding lifts both ends of the long axis, the way a pinned butterfly holds its wings.
+    const z = (rest[i + 2] * settings.depth + Math.abs(along) * fold) * size;
+    const offset = bendAt(along) - bendAtAnchor;
     if (long === 0) y += offset;
     else x += offset;
     if (settings.mirror) x = -x;
@@ -129,16 +135,19 @@ export function applySettings(placed: Placed, structure: THREE.Mesh, structureSi
     rigid
       .copy(point)
       .addScaledVector(right, across)
-      .addScaledVector(top, upward)
-      .addScaledVector(out, z + standoff);
+      .addScaledVector(leanTop, upward)
+      .addScaledVector(lean, z + standoff);
 
     if (settings.conform > 0) {
-      // Seen from the front, the thing keeps its shape while each vertex sinks onto the surface behind it.
-      const px = point.x + across;
-      const py = point.y + upward;
-      const depth = surfaceDepth(structure, px, py);
-      if (depth !== undefined) {
-        rigid.lerp(new THREE.Vector3(px, py, depth + z + standoff + 0.0015 * structureSize), settings.conform);
+      // Each vertex sinks straight down onto the surface under it, so the thing keeps
+      // its shape as seen from above its anchor.
+      onPlane.copy(point).addScaledVector(right, across).addScaledVector(top, upward);
+      above.copy(onPlane).addScaledVector(out, structureSize);
+      raycaster.set(above, inward);
+      const hit = raycaster.intersectObject(structure, false)[0];
+      if (hit) {
+        hit.point.addScaledVector(out, z + standoff + 0.0015 * structureSize);
+        rigid.lerp(hit.point, settings.conform);
       }
     }
     positions.setXYZ(i / 3, rigid.x, rigid.y, rigid.z);
@@ -149,11 +158,11 @@ export function applySettings(placed: Placed, structure: THREE.Mesh, structureSi
   placed.mesh.geometry.computeBoundingSphere();
 
   if (placed.pinHead && placed.pinStem) {
-    const reach = standoff + criteria.size.thickness * size + 0.004 * structureSize;
-    placed.pinHead.position.copy(point).addScaledVector(out, reach);
-    placed.pinStem.position.copy(point).addScaledVector(out, reach / 2);
+    const reach = standoff + criteria.size.thickness * settings.depth * size + 0.004 * structureSize;
+    placed.pinHead.position.copy(point).addScaledVector(lean, reach);
+    placed.pinStem.position.copy(point).addScaledVector(lean, reach / 2);
     placed.pinStem.scale.set(1, reach, 1);
-    placed.pinStem.quaternion.setFromUnitVectors(WORLD_UP, out);
+    placed.pinStem.quaternion.setFromUnitVectors(WORLD_UP, lean);
   }
 }
 

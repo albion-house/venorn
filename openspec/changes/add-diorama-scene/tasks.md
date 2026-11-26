@@ -1,0 +1,30 @@
+## 1. Closed models
+
+- [x] 1.1 Give each part of a cutout a round cross-section from the largest disc that fits it. Verify: a unit test checks a wide disc with a thin bar.
+- [x] 1.2 Build closed meshes with a mirrored back, resting on the anchor plane. Verify: unit tests check the doubled mesh, the back's facing and the rest position.
+- [x] 1.3 Make the skull a closed model with a mirrored far side. Verify: the skull shows a far side when the camera is behind it.
+- [x] 1.4 Add depth to every kind's criteria and fold to the butterfly's, and let a kind override how it attaches. Verify: unit tests cover depth, fold and an attachment override, and the schema validates the exported files.
+
+## 2. Scene layers
+
+- [x] 2.1 Declare the scene's four layers in `source.toml`. Verify: a unit test loads the scene.
+- [x] 2.2 Outline the ground, pick the far layer by hue, find the flat backdrop and sort the textured background. Verify: unit tests cover the flat sky, the fitted gradient and a floating patch, and `layers/check.png` shows the painting split.
+- [x] 2.3 Carry the far layer on behind the clouds, the skull and the meadow. Verify: a unit test fills behind a structure, and `layers/check.png` shows a forest with no hole.
+- [x] 2.4 Export the layers into the manifest and add the `layers` task. Verify: `mise //venorn-asset-pipeline:build` writes the scene into `manifest.json`.
+
+## 3. Camera and gestures
+
+- [x] 3.1 Free the camera's turn, zoom toward the pointer, and pan. Verify: scripted wheel and key events zoom from 9 to 1.4 world units and move the target, and the turn has no sideways limit.
+- [x] 3.2 Remove a thing with a right click or a held finger, and keep a right drag for panning. Verify: a right click and a held touch each remove one thing, and a right drag removes none.
+- [x] 3.3 Place, wrap and fold things on any side of the skull, with depth and fold controls. Verify: a candy pins to the far side facing away from the skull, a fully wrapped flower sits within 0.006 world units of the surface everywhere, and the lowest depth makes a flower a tenth as thick.
+
+## 4. Scene in the viewer
+
+- [x] 4.1 Wrap the layers around the scene, paint the sky dome and shape the ground. Verify: the front view matches the painting, and the scene surrounds the skull from the back and from above.
+- [x] 4.2 Cast shadows from a sun that circles the sky, drift the clouds, fly birds behind the forest and add the wind sound. Verify: after a scripted minute the cloud ring has turned and the sun has moved.
+
+## 5. Carried over from the first change
+
+- [ ] 5.1 Try the viewer on a phone: pin, adjust, remove, turn, zoom and pan by touch. Verify: each works on a real phone over the local network, with the skull visible while adjusting.
+- [ ] 5.2 Look through `catalog/overlay.png`, `isolated/sheet.png` and `layers/check.png` with codekiln, and note which kinds, exemplars and layer rules to change.
+- [ ] 5.3 Answer the open questions in `design.md`.
