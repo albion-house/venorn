@@ -37,9 +37,3 @@
 - [x] 6.3 Pin the chosen model with a tap, with a pin sound and a throbbing pin head. Verify: tapping the skull in the browser pins the chosen model.
 - [x] 6.4 Build the adjustment controls from the selected thing's criteria. Verify: a pinned candy and a printed flower show the controls their criteria allow.
 - [x] 6.5 Project printed things onto the surface and arrange the skull as painted. Verify: "Arrange as painted" places one thing per arrangement entry.
-- [ ] 6.6 Try the viewer on a phone: pin, adjust and turn the camera by touch. At phone width in a desktop browser the tray and pinning work, and the adjustment panel covers the lower half of the skull. Verify: each works on a real phone over the local network, with the skull visible while adjusting.
-
-## 7. Review
-
-- [ ] 7.1 Look through `catalog/overlay.png`, `isolated/sheet.png` and the viewer with codekiln, and note which kinds and exemplars to change.
-- [ ] 7.2 Answer the open questions in `design.md`.

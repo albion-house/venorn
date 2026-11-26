@@ -106,46 +106,14 @@ A printed thing is projected onto the structure from the front, so it keeps its 
 
 ## Resolved Questions
 
-None yet.
-
-## Open Questions
-
 ### 1 - Which generative model should turn cutouts into full 3D models, and where should it run?
 
-> Context from the drafting agent, for question 1.
->
-> The relief backend reconstructs depth. A generative image-to-3D model would produce a complete shape, including the sides and back.
->
-> On this 16 GB M2 Pro, [lyonsno/trellis2mlx](https://github.com/lyonsno/trellis2mlx) reports a full TRELLIS.2 generation in 21 minutes with 6.75 GB of peak memory. The thirteen small models would take about four and a half hours. That repository is new and has a single maintainer. [shivampkumar/trellis-mac](https://github.com/shivampkumar/trellis-mac), a second port, recommends 24 GB of memory.
->
-> [TripoSR](https://github.com/VAST-AI-Research/TripoSR) is MIT licensed and runs in seconds, with coarser results. It is not published as a package, so using it means keeping a copy of its source.
->
-> A hosted service runs TRELLIS.2 or Hunyuan3D in under a minute per model and needs an API key and payment.
->
-> My recommendation: add a hosted backend for the pinned kinds once you have chosen a service, and keep relief for the printed kinds and the structure.
-
-<ANSWER_HERE>
+A model that runs on this Mac comes first, and a hosted service comes in when it is needed. codekiln, 2026-11-26: "let's do the local service for now and switch to hosted service when it becomes needed, unless you have a good quality reason."
 
 ### 2 - Which image model should redraw cutouts at higher resolution and draw new things from a description?
 
-> Context from the drafting agent, for question 2.
->
-> The same model could do both jobs: sharpen a 40-pixel cutout into a clean picture before it is lifted, and draw a new thing in the painting's style from the player's typed or spoken words. The plan runs this on your machine with your API key.
+No image model is wired into the pipeline yet. When an image is needed, ChatGPT can make it, driven through Claude in Chrome. codekiln, 2026-11-26: "if needed you can use claude in chrome to request chatgpt make some images".
 
-<ANSWER_HERE>
+## Open Questions
 
-### 3 - Where should generated models be stored?
-
-> Context from the drafting agent, for question 3.
->
-> Git ignores the exported asset sets today, so a clone runs the pipeline to get them. One export of the painting is 10 MB. GitHub Pages can only serve files that are in the deployed site, so publishing needs the models in git, in git LFS, or copied in by the deploy workflow from storage outside the repository.
-
-<ANSWER_HERE>
-
-### 4 - Should the game stay on three.js used directly?
-
-> Context from the drafting agent, for question 4.
->
-> The viewer uses three.js with no framework. React Three Fiber would fit a React interface, and Babylon.js is the main alternative engine. The models are standard GLB files and load in any of them.
-
-<ANSWER_HERE>
+None. The questions about where generated models are stored and which rendering library the game uses moved, unanswered, to the `add-diorama-scene` change.
