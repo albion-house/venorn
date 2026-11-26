@@ -32,11 +32,16 @@ mise //venorn-asset-pipeline:build
 # Open the scene in a browser and pin things to the skull
 mise //venorn-game-client:dev
 
+# Build the client and serve it to a phone on the same network
+mise //venorn-game-client:phone
+
 # Lint, test and type-check every project, and validate the OpenSpec changes
 mise //:check
 ```
 
 The pipeline downloads about 3 GB of model weights from Hugging Face the first time it runs.
+
+The `phone` task prints the addresses to open. It serves the built site, so run it again after a change. Any device on the same network can open the page while the task runs.
 
 ## In the viewer
 
