@@ -9,8 +9,8 @@ import numpy as np
 from PIL import Image, ImageDraw
 from scipy import ndimage
 
-from . import models
-from .source import Source
+from . import models, painted
+from .source import Kind, Source
 
 # Small things are looked for in overlapping tiles so the detector sees them enlarged.
 TILE = 448
@@ -29,6 +29,7 @@ COLORS = {
     "capsule": (0, 200, 255),
     "bead": (80, 120, 255),
     "flower": (60, 220, 90),
+    "sprig": (255, 255, 255),
 }
 
 
@@ -103,12 +104,15 @@ def find_structure(image: Image.Image, source: Source) -> np.ndarray:
 
 
 def find_things(
-    image: Image.Image, source: Source, on: np.ndarray
+    image: Image.Image, kinds: list[Kind], on: np.ndarray
 ) -> list[tuple[str, float, tuple, np.ndarray, float, float]]:
-    """Find every instance of every kind. Returns (kind, score, box, mask, mask quality, kind confidence)."""
+    """Find every instance of the kinds the detector looks for.
+
+    Returns (kind, score, box, mask, mask quality, kind confidence).
+    """
     width, height = image.size
-    prompts = [kind.prompt for kind in source.kinds]
-    kind_by_prompt = {kind.prompt: kind.id for kind in source.kinds}
+    prompts = [kind.prompt for kind in kinds]
+    kind_by_prompt = {kind.prompt: kind.id for kind in kinds}
     near_structure = ndimage.binary_dilation(on, iterations=6)
 
     candidates = []
@@ -174,14 +178,39 @@ def find_things(
     for _, _, box, _, _ in chosen:
         x0, y0, x1, y1 = (int(round(v)) for v in box)
         crops.append(image.crop((max(0, x0 - 6), max(0, y0 - 6), min(width, x1 + 6), min(height, y1 + 6))))
-    probabilities = models.classify(crops, [kind.looks_like for kind in source.kinds])
+    probabilities = models.classify(crops, [kind.looks_like for kind in kinds])
     named = []
     for (_, score, box, mask, quality), row in zip(chosen, probabilities, strict=True):
         best = int(np.argmax(row))
         if row[best] < MIN_KIND_CONFIDENCE:
             continue
-        named.append((source.kinds[best].id, score, box, mask, quality, float(row[best])))
+        named.append((kinds[best].id, score, box, mask, quality, float(row[best])))
     return named
+
+
+def add_painted(
+    rgb: np.ndarray, structure: np.ndarray, kinds: list[Kind], things: list[tuple]
+) -> list[tuple[str, float, tuple, np.ndarray, float, float]]:
+    """Add the instances of the kinds that are found by their paint.
+
+    A thing that a painted instance carries becomes part of that instance and
+    leaves the list.
+    """
+    for kind in kinds:
+        carried = np.zeros_like(structure)
+        others = np.zeros_like(structure)
+        for other_kind, _, _, mask, _, _ in things:
+            if other_kind in kind.carries:
+                carried |= mask
+            else:
+                others |= mask
+        found = painted.find_painted(rgb, structure, kind.hue, carried, others)
+        things = [thing for thing in things if not (thing[0] in kind.carries and painted.carried_by(thing[3], found))]
+        for mask in found:
+            ys, xs = np.nonzero(mask)
+            box = (float(xs.min()), float(ys.min()), float(xs.max() + 1), float(ys.max() + 1))
+            things.append((kind.id, 1.0, box, mask, 1.0, 1.0))
+    return things
 
 
 def catalog(source: Source) -> None:
@@ -197,7 +226,10 @@ def catalog(source: Source) -> None:
     ys, xs = np.nonzero(structure)
     structure_box = [int(xs.min()), int(ys.min()), int(xs.max()) + 1, int(ys.max()) + 1]
 
-    things = find_things(image, source, structure)
+    things = find_things(image, [kind for kind in source.kinds if kind.find == "detector"], structure)
+    things = add_painted(
+        np.asarray(image), structure, [kind for kind in source.kinds if kind.find == "painted"], things
+    )
     instances: list[Instance] = []
     counters: dict[str, int] = {}
     for kind, score, _, mask, quality, confidence in sorted(things, key=lambda t: (t[0], -t[1])):

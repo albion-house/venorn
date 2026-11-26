@@ -18,6 +18,8 @@ from . import models
 NAME = "relief"
 # Share of a small thing's front that the depth estimate shapes.
 DEPTH_WEIGHT = 0.35
+# How much of their height the flat parts of a thing give up.
+FLATTEN = 0.75
 
 
 def local_radius(mask: np.ndarray) -> np.ndarray:
@@ -58,15 +60,21 @@ def _surface_plane(depth: np.ndarray, mask: np.ndarray) -> np.ndarray:
     return (coefficients[0] * grid_x + coefficients[1] * grid_y + coefficients[2]).astype(np.float32)
 
 
-def thing_heights(context: Image.Image, alpha: np.ndarray, thickness: float) -> tuple[np.ndarray, np.ndarray]:
+def thing_heights(
+    context: Image.Image, alpha: np.ndarray, thickness: float, flat: np.ndarray | None = None
+) -> tuple[np.ndarray, np.ndarray]:
     """Front and back heights in pixels for a small thing.
 
     thickness is the thing's greatest depth as a fraction of its shorter side.
+    flat marks the parts that stay close to the surface, such as painted stems
+    and leaves, so the rest stands out from them.
     """
     mask = alpha > 0.5
     ys, xs = np.nonzero(mask)
     short = min(np.ptp(ys), np.ptp(xs)) + 1
     half = _limit(round_profile(mask), thickness * short / 2)
+    if flat is not None:
+        half = half * (1 - FLATTEN * ndimage.gaussian_filter(flat.astype(np.float32), sigma=2.0))
 
     depth = models.depth(context)
     raised = np.clip(depth - _surface_plane(depth, mask), 0, None)

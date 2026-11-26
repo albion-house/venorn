@@ -11,9 +11,40 @@ def test_painting_source_names_its_structure_and_kinds():
     source = load_source("veneration-ornamentation")
 
     assert source.structure.id == "skull"
-    assert {kind.id for kind in source.kinds} == {"butterfly", "candy", "capsule", "bead", "flower"}
-    assert all(kind.role == "pinned" for kind in source.kinds)
+    assert {kind.id for kind in source.kinds} == {"butterfly", "candy", "capsule", "bead", "flower", "sprig"}
+    assert {kind.id for kind in source.kinds if kind.role == "printed"} == {"sprig"}
     assert source.kind("butterfly").criteria["adjust"]["fold"]["default"] > 0
+
+
+def test_painted_kind_names_its_paint_and_what_it_carries():
+    sprig = load_source("veneration-ornamentation").kind("sprig")
+
+    assert sprig.find == "painted"
+    assert sprig.hue == (44.0, 170.0)
+    assert sprig.carries == ("flower",)
+    assert load_source("veneration-ornamentation").kind("candy").find == "detector"
+
+
+def test_detector_kind_without_a_prompt_is_refused(tmp_path):
+    declared = tmp_path / "sources" / "broken"
+    declared.mkdir(parents=True)
+    (declared / "source.toml").write_text(
+        """
+name = "broken"
+[image]
+url = "https://example.com/a.jpg"
+sha256 = "0"
+[structure]
+id = "rock"
+prompts = ["rock"]
+[[kinds]]
+id = "shell"
+role = "pinned"
+"""
+    )
+
+    with pytest.raises(SystemExit, match="needs a prompt"):
+        load_source("broken", root=tmp_path)
 
 
 def test_painting_source_declares_its_scene_layers():
