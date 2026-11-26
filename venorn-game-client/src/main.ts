@@ -7,7 +7,7 @@ import { buildLinks, type Links } from "./links";
 import { createMusic, type Music } from "./music";
 import { applySettings, createPlaced, defaultSettings, settingsWithin, swell, throb, type Placed } from "./placement";
 import { buildMeadow, gustAt, type Meadow } from "./meadow";
-import { buildPen, inkPicture, INKS, undoPicture, type Pen, type Stroke } from "./pen";
+import { buildPen, inkPicture, INKS, turnPicture, undoPicture, type Pen, type Stroke } from "./pen";
 import {
   findModel,
   isBare,
@@ -105,6 +105,8 @@ let pen: Pen | undefined;
 const PEN = "pen";
 // The moment of the pen's last sound, so that a long stroke makes a few sounds and not hundreds.
 let penSounded = 0;
+// The pen is put aside and a drag turns the camera, even on the structure, which may fill the screen.
+let turning = false;
 let links: Links | undefined;
 // The thing whose note sounded last. The next note's line starts from it.
 let lastSounded: (typeof placed)[number] | undefined;
@@ -197,6 +199,14 @@ function undoStroke(): void {
   say(undone ? "Took back the last stroke" : "No stroke to take back");
 }
 
+/** Put the pen aside so a drag turns the camera, or take it up again. */
+function turnView(): void {
+  turning = !turning;
+  ui.showVariation(categories, category, variation[category]);
+  if (turning) say(`Drag to turn the view. ${precise ? "Click" : "Tap"} an ink to draw again`);
+  else say("Drag on the skull to draw");
+}
+
 /** Show a category in the dock and its variations in the strip. */
 function show(index: number): void {
   category = index;
@@ -206,6 +216,7 @@ function show(index: number): void {
 /** Choose a category. A selected thing turns into that category's current variation. */
 function chooseCategory(index: number): void {
   if (!categories[index]) return;
+  turning = false;
   if (categories[index].id === PEN) {
     // The pen draws on the structure, so no thing stays selected while it is chosen.
     select(undefined);
@@ -222,6 +233,9 @@ function chooseCategory(index: number): void {
 function chooseVariation(index: number): void {
   const count = categories[category].choices.length;
   variation[category] = ((index % count) + count) % count;
+  // Choosing an ink takes the pen up again.
+  if (turning) say("Drag on the skull to draw");
+  turning = false;
   ui.showVariation(categories, category, variation[category]);
   if (selected && !painting()) swap(selected, currentId());
 }
@@ -763,7 +777,10 @@ async function start(): Promise<void> {
     id: PEN,
     name: "Glitter pen",
     choices: INKS.map((ink) => ({ id: `${PEN}:${ink.id}`, preview: inkPicture(ink) })),
-    actions: [{ label: "Take back the last stroke", preview: undoPicture(), act: undoStroke }],
+    actions: [
+      { label: "Turn the view", preview: turnPicture(), act: turnView, pressed: () => turning },
+      { label: "Take back the last stroke", preview: undoPicture(), act: undoStroke },
+    ],
   });
 
   ui.buildDock(categories, chooseCategory);
@@ -802,6 +819,7 @@ async function start(): Promise<void> {
       controls.enabled = on;
     },
     painting,
+    turning: () => painting() && turning,
     cameraTurns: (on) => {
       controls.enableRotate = on;
     },

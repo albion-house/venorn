@@ -233,9 +233,13 @@ function buildGround(scene: SceneLayers, flat: number, outer: number, level: num
   return ground;
 }
 
-/** One long picture of the meadow wrapped around the scene as a ring of cut paper. */
+/**
+ * One long picture of the meadow wrapped around the scene as a ring of cut paper.
+ * The picture repeats as it is when its ends join, and otherwise with every second copy mirrored.
+ */
 function buildRing(
   texture: THREE.Texture,
+  mirrored: boolean,
   paper: Paper,
   radius: number,
   base: number,
@@ -243,9 +247,11 @@ function buildRing(
   height: number,
   turn: number,
 ): THREE.Mesh {
-  const copies = Math.max(2, 2 * Math.round(TURN / (width / radius) / 2));
+  // Mirrored copies come in pairs.
+  const pair = mirrored ? 2 : 1;
+  const copies = Math.max(2, pair * Math.round(TURN / (width / radius) / pair));
   const own = texture.clone();
-  own.wrapS = THREE.MirroredRepeatWrapping;
+  own.wrapS = mirrored ? THREE.MirroredRepeatWrapping : THREE.RepeatWrapping;
   own.repeat.x = copies;
   own.needsUpdate = true;
   const geometry = new THREE.CylinderGeometry(radius, radius, height, copies * 16, 6, true, turn);
@@ -314,16 +320,21 @@ export async function buildMeadow(
   ]);
   const width = (cutout.right - cutout.left) * structureSize;
   const height = (cutout.top - cutout.bottom) * structureSize;
-  const rings: { radius: number; scale: number; picture: THREE.Texture }[] = [
-    { radius: flat, scale: 1, picture: cutoutPicture },
-    { radius: flat * 1.55, scale: 1.1, picture: cutoutPicture },
+  const cutoutMirrored = cutout.repeat !== "plain";
+  const rings: { radius: number; scale: number; picture: THREE.Texture; mirrored: boolean }[] = [
+    { radius: flat, scale: 1, picture: cutoutPicture, mirrored: cutoutMirrored },
+    { radius: flat * 1.55, scale: 1.1, picture: cutoutPicture, mirrored: cutoutMirrored },
   ];
   for (let radius = flat * 2.4, scale = 1.3; radius < outerRadius * 0.86; radius *= 1.38, scale *= 1.22) {
-    rings.push({ radius, scale, picture: wholePicture ?? cutoutPicture });
+    rings.push(
+      wholePicture
+        ? { radius, scale, picture: wholePicture, mirrored: whole?.repeat !== "plain" }
+        : { radius, scale, picture: cutoutPicture, mirrored: cutoutMirrored },
+    );
   }
-  for (const { radius, scale, picture } of rings) {
+  for (const { radius, scale, picture, mirrored } of rings) {
     const base = groundHeight(radius, level, flat) - 0.02 * height;
-    group.add(buildRing(picture, paper, radius, base, width * scale, height * scale, next() * TURN));
+    group.add(buildRing(picture, mirrored, paper, radius, base, width * scale, height * scale, next() * TURN));
   }
 
   // Plants standing on their own roots: pairs of crossed cutouts in the thicket, single ones farther out.

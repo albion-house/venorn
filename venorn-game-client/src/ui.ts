@@ -13,8 +13,8 @@ export interface Category {
   id: string;
   name: string;
   choices: Choice[];
-  /** Buttons shown after the variations, such as a pen's undo. */
-  actions?: { label: string; preview: string; act: () => void }[];
+  /** Buttons shown after the variations, such as a pen's undo. A button that stays pressed says so. */
+  actions?: { label: string; preview: string; act: () => void; pressed?: () => boolean }[];
 }
 
 export interface OnScreen {
@@ -88,6 +88,7 @@ export function showCategory(
   [...dock.children].forEach((button, i) => button.setAttribute("aria-pressed", String(i === index)));
   if (shown !== index) {
     shown = index;
+    strip.classList.toggle("fit", (categories[index].actions?.length ?? 0) > 0);
     strip.replaceChildren(
       ...categories[index].choices.map((choice, i) => {
         const button = tile(choice, `${categories[index].name} ${i + 1}`);
@@ -108,7 +109,14 @@ export function showCategory(
 /** Mark one variation of the shown category, and show it on the category's button. */
 export function showVariation(categories: Category[], index: number, variation: number): void {
   dock.children[index].querySelector("img")!.src = categories[index].choices[variation].preview;
-  [...strip.children].forEach((button, i) => button.setAttribute("aria-selected", String(i === variation)));
+  const { choices, actions = [] } = categories[index];
+  // While a button such as the pen's turn is pressed, it is marked in place of the variation.
+  const held = actions.some((action) => action.pressed?.());
+  [...strip.children].forEach((button, i) => {
+    button.setAttribute("aria-selected", String(i === variation && !held));
+    const pressed = actions[i - choices.length]?.pressed;
+    if (pressed) button.setAttribute("aria-pressed", String(pressed()));
+  });
   strip.children[variation]?.scrollIntoView({ block: "nearest", inline: "center" });
 }
 

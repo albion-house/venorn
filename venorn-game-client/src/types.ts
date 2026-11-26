@@ -72,6 +72,8 @@ export interface Layer {
   motion: "still" | "drift";
   // The layer's top edge as points across the image: where it is, and how high.
   skyline: [number, number][];
+  // "plain" when the picture's ends join, so its copies repeat as they are. Otherwise every second copy is mirrored.
+  repeat?: "plain";
 }
 
 export interface SceneLayers {
@@ -82,7 +84,7 @@ export interface SceneLayers {
     y: number;
     color: string;
     // The ground layer with its dark base cut away: one long picture, placed like a layer.
-    cutout: { image: string; left: number; right: number; top: number; bottom: number };
+    cutout: { image: string; left: number; right: number; top: number; bottom: number; repeat?: "plain" };
     plants: Plant[];
   };
 }

@@ -41,6 +41,10 @@ MAX_PLANTS = 16
 EDGE = 6
 # The structure's soft edge reaches this many pixels past its outline.
 SOFT_EDGE = 16
+# A layer whose ends are joined loses this share of its width: its right end is laid over its start.
+JOIN_OVERLAP = 0.2
+# Where the right end gives way to the start, the two are blended across this many pixels on either side.
+JOIN_BLEND = 4
 
 
 def _close(mask: np.ndarray, reach: int) -> np.ndarray:
@@ -162,10 +166,55 @@ def top_edge(mask: np.ndarray, points: int) -> list[list[int]]:
 
 def _plate(rgb: np.ndarray, mask: np.ndarray, rows: tuple[int, int]) -> Image.Image:
     """An RGBA picture of one layer, cropped to its rows, with its edge colors spread outward."""
-    # The softened edge stops at the sides of the image, where the viewer joins one copy of the picture to the next.
+    # The softened edge stops at the sides of the image, where copies of the picture meet.
     alpha = ndimage.gaussian_filter(mask.astype(np.float32), 1.2, mode="nearest")
     pixels = np.dstack([rgb, np.rint(alpha * 255).astype(np.uint8)])[rows[0] : rows[1]]
     return Image.fromarray(bleed_edges(pixels))
+
+
+def join_ends(rgba: np.ndarray, overlap: int) -> tuple[np.ndarray, np.ndarray]:
+    """Cut a picture so that copies of it placed side by side carry on into each other.
+
+    The last overlap columns are laid over the first ones. A path from the top
+    row to the bottom chooses where the right end gives way to the start: the
+    path along which the two differ least in color and in transparency, moving
+    at most one column from one row to the next. Returns the picture, narrower
+    by overlap columns, and the path's column in each row.
+    """
+    height, width = rgba.shape[:2]
+    if not 0 < overlap < width // 2:
+        raise ValueError(f"an overlap of {overlap} columns does not fit a picture {width} wide")
+    pixels = rgba.astype(np.float32) / 255
+    carried = pixels[:, width - overlap :]
+    start = pixels[:, :overlap]
+
+    def seen(part: np.ndarray) -> np.ndarray:
+        alpha = part[..., 3:4]
+        return np.concatenate([part[..., :3] * alpha, alpha * 2], axis=-1)
+
+    cost = ((seen(carried) - seen(start)) ** 2).sum(axis=-1)
+    total = cost.copy()
+    for row in range(1, height):
+        above = total[row - 1]
+        left = np.concatenate([[np.inf], above[:-1]])
+        right = np.concatenate([above[1:], [np.inf]])
+        total[row] += np.minimum(np.minimum(left, above), right)
+    path = np.zeros(height, dtype=int)
+    path[-1] = int(np.argmin(total[-1]))
+    for row in range(height - 2, -1, -1):
+        low = max(0, path[row + 1] - 1)
+        path[row] = low + int(np.argmin(total[row, low : path[row + 1] + 2]))
+
+    columns = np.arange(overlap)[None, :]
+    toward_start = np.clip((columns - path[:, None]) / (2 * JOIN_BLEND) + 0.5, 0, 1)[..., None]
+    joined = pixels[:, : width - overlap].copy()
+    joined[:, :overlap] = carried * (1 - toward_start) + start * toward_start
+    return np.clip(np.rint(joined * 255), 0, 255).astype(np.uint8), path
+
+
+def _joined(picture: Image.Image) -> Image.Image:
+    joined, _ = join_ends(np.asarray(picture.convert("RGBA")), round(picture.width * JOIN_OVERLAP))
+    return Image.fromarray(joined)
 
 
 def _rows(mask: np.ndarray) -> tuple[int, int]:
@@ -210,19 +259,29 @@ def layers(source: Source) -> None:
     far_alpha = far_extent(far, floating | leftover, in_front | ground)
     far_rgb = fill(rgb, far_alpha & ~far, far)
 
-    # The far layer's top edge, so the viewer knows where the gaps between its masses are.
-    skyline = top_edge(far_alpha, SKYLINE_POINTS)
-
     plates = {
         scene.ground_id: (rgb, ground),
         scene.floating_id: (rgb, floating),
         scene.far_id: (far_rgb, far_alpha),
     }
+    # The far layer and the ground are cut so that their copies around the scene join without a mirror.
+    joined_ids = {scene.far_id, scene.ground_id}
     boxes = {}
+    pictures = {}
     for layer_id, (pixels, mask) in plates.items():
         rows = _rows(mask)
-        _plate(pixels, mask, rows).save(out / f"{layer_id}.png")
-        boxes[layer_id] = [0, rows[0], width, rows[1]]
+        picture = _plate(pixels, mask, rows)
+        if layer_id in joined_ids:
+            picture = _joined(picture)
+        picture.save(out / f"{layer_id}.png")
+        pictures[layer_id] = picture
+        boxes[layer_id] = [0, rows[0], picture.width, rows[1]]
+
+    # The far layer's top edge, so the viewer knows where the gaps between its masses are.
+    far_rows = _rows(far_alpha)
+    far_top = np.zeros((height, pictures[scene.far_id].width), dtype=bool)
+    far_top[far_rows[0] : far_rows[1]] = np.asarray(pictures[scene.far_id])[..., 3] > 127
+    skyline = top_edge(far_top, SKYLINE_POINTS)
 
     ground_rows = np.nonzero(structure.any(axis=1))[0]
     ground_row = int(ground_rows.max() - 0.04 * (ground_rows.max() - ground_rows.min()))
@@ -231,7 +290,8 @@ def layers(source: Source) -> None:
     cutout = plants.cut_out(rgb, ground)
     ground_color = plants.base_color(rgb, ground, cutout)
     cutout_id = f"{scene.ground_id}-cutout"
-    plants.strip(rgb, cutout, _rows(ground)).save(out / f"{cutout_id}.png")
+    pictures[cutout_id] = _joined(plants.strip(rgb, cutout, _rows(ground)))
+    pictures[cutout_id].save(out / f"{cutout_id}.png")
     grown = plants.plants(rgb, cutout)[:MAX_PLANTS]
     for number, plant in enumerate(grown, start=1):
         plant.picture.save(out / f"plant-{number:02d}.png")
@@ -249,6 +309,7 @@ def layers(source: Source) -> None:
                 "distance": scene.far_distance,
                 "motion": "still",
                 "skyline": skyline,
+                "repeat": "plain",
             },
             {
                 "id": scene.floating_id,
@@ -265,6 +326,7 @@ def layers(source: Source) -> None:
                 "box": boxes[scene.ground_id],
                 "distance": 0.0,
                 "motion": "still",
+                "repeat": "plain",
             },
         ],
         "backdrop": {
@@ -274,7 +336,7 @@ def layers(source: Source) -> None:
         "ground": {
             "row": ground_row,
             "color": to_hex(ground_color),
-            "cutout": {"image": f"{cutout_id}.png", "box": boxes[scene.ground_id]},
+            "cutout": {"image": f"{cutout_id}.png", "box": boxes[scene.ground_id], "repeat": "plain"},
             "plants": [
                 {
                     "id": f"plant-{number:02d}",
@@ -289,13 +351,22 @@ def layers(source: Source) -> None:
     }
     (out / "layers.json").write_text(json.dumps(result, indent=2) + "\n")
     _check_picture(rgb, backdrop, far_rgb, far_alpha, floating, ground).save(out / "check.png")
+    joins = [
+        (pictures[scene.far_id], backdrop[height // 2]),
+        (pictures[scene.ground_id], ground_color),
+        (pictures[cutout_id], ground_color),
+    ]
+    _joins_picture(joins).save(out / "joins.png")
 
     _plant_sheet(grown).save(out / "plants.png")
     shares = ", ".join(
         f"{name} {mask.mean():.0%}"
         for name, mask in ((scene.far_id, far), (scene.floating_id, floating), (scene.ground_id, ground))
     )
-    print(f"layers: {shares} of the image, and {len(grown)} plants. See {out / 'check.png'} and {out / 'plants.png'}")
+    print(
+        f"layers: {shares} of the image, and {len(grown)} plants. "
+        f"See {out / 'check.png'}, {out / 'joins.png'} and {out / 'plants.png'}"
+    )
 
 
 def _check_picture(
@@ -316,6 +387,22 @@ def _check_picture(
     stacked[ground] = rgb[ground]
     row = np.concatenate([rgb, with_far, stacked], axis=1)
     return Image.fromarray(row).resize((row.shape[1] // 2, row.shape[0] // 2), Image.LANCZOS)
+
+
+def _joins_picture(joins: list[tuple[Image.Image, np.ndarray]]) -> Image.Image:
+    """Three copies of each joined layer side by side on a plain color, for a person to check where they meet."""
+    rows = []
+    for picture, color in joins:
+        backing = Image.new("RGBA", (picture.width * 3, picture.height), tuple(int(c) for c in color) + (255,))
+        for copy in range(3):
+            backing.alpha_composite(picture, (copy * picture.width, 0))
+        rows.append(backing.convert("RGB"))
+    sheet = Image.new("RGB", (max(row.width for row in rows), sum(row.height + 8 for row in rows)), (40, 40, 60))
+    top = 0
+    for row in rows:
+        sheet.paste(row, (0, top))
+        top += row.height + 8
+    return sheet.resize((sheet.width // 2, sheet.height // 2), Image.LANCZOS)
 
 
 def _plant_sheet(grown: list[plants.Plant]) -> Image.Image:
