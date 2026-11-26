@@ -36,6 +36,14 @@ def export(source: Source) -> None:
         if entries:
             kinds.append({"id": kind.id, "role": kind.role, "models": entries})
 
+    # The groups the player chooses from, each with the kinds that have models.
+    exported = {kind["id"] for kind in kinds}
+    categories = [
+        {"id": category.id, "name": category.name, "kinds": [kind for kind in category.kinds if kind in exported]}
+        for category in source.categories
+        if any(kind in exported for kind in category.kinds)
+    ]
+
     # Where each thing sits in the painting, in the structure's model units.
     arrangement = [
         {
@@ -116,6 +124,7 @@ def export(source: Source) -> None:
             "thickness": structure["thickness"],
         },
         "kinds": kinds,
+        "categories": categories,
         "arrangement": arrangement,
         "scene": scene,
     }

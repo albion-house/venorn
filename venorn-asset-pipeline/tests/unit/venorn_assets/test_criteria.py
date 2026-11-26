@@ -79,3 +79,8 @@ def test_kind_can_override_how_it_attaches(measured):
 
     assert record["attach"]["standoff"]["default"] == 0.03
     assert record["attach"]["pin"]["visible"] is True
+
+
+def test_every_model_can_have_its_colors_turned(measured):
+    for role in ("pinned", "printed"):
+        assert criteria_for(role=role, **measured)["adjust"]["hue"] == {"default": 0.0, "min": -180.0, "max": 180.0}

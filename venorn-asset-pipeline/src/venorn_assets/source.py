@@ -38,6 +38,13 @@ class Kind:
 
 
 @dataclass(frozen=True)
+class Category:
+    id: str
+    name: str
+    kinds: tuple[str, ...]
+
+
+@dataclass(frozen=True)
 class Structure:
     id: str
     prompts: tuple[str, ...]
@@ -64,6 +71,7 @@ class Source:
     image_sha256: str
     structure: Structure
     kinds: tuple[Kind, ...]
+    categories: tuple[Category, ...]
     scene: Scene | None
     root: Path
 
@@ -127,18 +135,30 @@ def load_source(name: str, root: Path | None = None) -> Source:
             )
         )
 
+    # With no categories declared, each kind is a category of its own.
+    declared = data.get("categories") or [
+        {"id": kind.id, "name": kind.id.capitalize(), "kinds": [kind.id]} for kind in kinds
+    ]
+    categories = tuple(
+        Category(id=entry["id"], name=entry.get("name", entry["id"].capitalize()), kinds=tuple(entry["kinds"]))
+        for entry in declared
+    )
+    grouped = [kind_id for category in categories for kind_id in category.kinds]
+    if sorted(grouped) != sorted(kind.id for kind in kinds):
+        raise SystemExit(f"{path}: every kind has to be in one category; the categories hold {sorted(grouped)}")
+
     scene = None
     if "scene" in data:
-        declared = data["scene"]
+        layers = data["scene"]
         scene = Scene(
-            ground_id=declared["ground"]["id"],
-            far_id=declared["far"]["id"],
-            far_hue=tuple(float(v) for v in declared["far"]["hue"]),
-            far_distance=float(declared["far"]["distance"]),
-            floating_id=declared["floating"]["id"],
-            floating_distance=float(declared["floating"]["distance"]),
-            floating_motion=declared["floating"].get("motion", "still"),
-            backdrop_id=declared["backdrop"]["id"],
+            ground_id=layers["ground"]["id"],
+            far_id=layers["far"]["id"],
+            far_hue=tuple(float(v) for v in layers["far"]["hue"]),
+            far_distance=float(layers["far"]["distance"]),
+            floating_id=layers["floating"]["id"],
+            floating_distance=float(layers["floating"]["distance"]),
+            floating_motion=layers["floating"].get("motion", "still"),
+            backdrop_id=layers["backdrop"]["id"],
         )
 
     structure = data["structure"]
@@ -153,6 +173,7 @@ def load_source(name: str, root: Path | None = None) -> Source:
             thickness=float(structure.get("thickness", 0.15)),
         ),
         kinds=tuple(kinds),
+        categories=categories,
         scene=scene,
         root=root,
     )
