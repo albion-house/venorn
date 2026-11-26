@@ -6,7 +6,7 @@
 
 ## 2. Color
 
-- [ ] 2.1 Weight the color turn by chroma and by darkness next to the thing's typical value. Verify: pictures read from the canvas show a red butterfly turned halfway around with blue-green wings and its body still red, and a dark green bead turned to another hue.
+- [x] 2.1 Weight the color turn by chroma and by darkness next to the thing's typical value. Verify: in pictures read from the canvas of a red butterfly turned 180°, the wings go from hue 1° to 175° and the body stays at 3°, from (47, 3, 1) to (45, 4, 3). Before the change the body went to 173°. A dark green bead turned 120° goes from hue 128° to 254°, near the 263° it reached before the change, and its highlight stays grey, from (143, 145, 134) to (144, 143, 135).
 
 ## 3. Rabbit
 

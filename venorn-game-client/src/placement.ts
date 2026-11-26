@@ -105,16 +105,50 @@ export function createPlaced(
   return placed;
 }
 
+// A color counts as colored when its largest channel less its smallest, in sRGB, is above this.
+const COLORED = 0.16;
+const typicalValues = new WeakMap<object, number>();
+
+/**
+ * The largest channel of a typical color in a texture, in sRGB: the median over its
+ * opaque, colored pixels. It tells which parts of a thing are dark for that thing.
+ */
+function typicalValue(map: THREE.Texture | null): number {
+  const image = map?.image as CanvasImageSource & { width: number; height: number } | undefined;
+  if (!image?.width) return 1;
+  const known = typicalValues.get(image);
+  if (known !== undefined) return known;
+  const scale = Math.min(1, 128 / Math.max(image.width, image.height));
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.max(1, Math.round(image.width * scale));
+  canvas.height = Math.max(1, Math.round(image.height * scale));
+  const context = canvas.getContext("2d", { willReadFrequently: true })!;
+  context.drawImage(image, 0, 0, canvas.width, canvas.height);
+  const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
+  const values: number[] = [];
+  for (let i = 0; i < pixels.length; i += 4) {
+    const high = Math.max(pixels[i], pixels[i + 1], pixels[i + 2]) / 255;
+    const low = Math.min(pixels[i], pixels[i + 1], pixels[i + 2]) / 255;
+    if (pixels[i + 3] > 127 && high - low > COLORED) values.push(high);
+  }
+  values.sort((a, b) => a - b);
+  const typical = values.length > 0 ? values[Math.floor(values.length / 2)] : 1;
+  typicalValues.set(image, typical);
+  return typical;
+}
+
 /** A copy of a model's material whose colors can be turned around the color wheel. */
 function tinted(base: THREE.MeshStandardMaterial, tint: { value: number }): THREE.MeshStandardMaterial {
   const material = base.clone();
   // The thing glows in this color while its note sounds.
   material.emissive.set(0xffdca8);
   material.emissiveIntensity = 0;
+  const typical = { value: typicalValue(base.map) };
   material.onBeforeCompile = (shader) => {
     shader.uniforms.uTint = tint;
+    shader.uniforms.uTypical = typical;
     shader.fragmentShader = shader.fragmentShader
-      .replace("#include <common>", "#include <common>\nuniform float uTint;")
+      .replace("#include <common>", "#include <common>\nuniform float uTint;\nuniform float uTypical;")
       .replace(
         "#include <map_fragment>",
         /* glsl */ `#include <map_fragment>
@@ -122,8 +156,15 @@ function tinted(base: THREE.MeshStandardMaterial, tint: { value: number }): THRE
           // Turn the color about the gray axis, which keeps its lightness.
           const vec3 gray = vec3(0.57735);
           float turn = cos(uTint);
-          diffuseColor.rgb = diffuseColor.rgb * turn + cross(gray, diffuseColor.rgb) * sin(uTint)
+          vec3 turned = diffuseColor.rgb * turn + cross(gray, diffuseColor.rgb) * sin(uTint)
             + gray * dot(gray, diffuseColor.rgb) * (1.0 - turn);
+          // Only the colored parts turn. Nearly grey parts, and parts much darker than the
+          // thing's own colors, such as a butterfly's body, keep their color.
+          vec3 shown = sRGBTransferOETF(vec4(diffuseColor.rgb, 1.0)).rgb;
+          float high = max(shown.r, max(shown.g, shown.b));
+          float chroma = high - min(shown.r, min(shown.g, shown.b));
+          float colored = smoothstep(0.06, ${COLORED}, chroma) * smoothstep(0.55, 0.8, high / uTypical);
+          diffuseColor.rgb = mix(diffuseColor.rgb, turned, colored);
         }`,
       );
   };
