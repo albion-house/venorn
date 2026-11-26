@@ -14,6 +14,19 @@ prompts = ["skull", "horn"]
 # mirrors the near side.
 thickness = 0.17
 
+# Named places on the bare structure. The detector looks for each prompt. A
+# hollow is described by its middle and its radius, and a spike by its tip and
+# its base.
+[[structure.features]]
+id = "socket"
+prompt = "hole"
+shape = "hollow"
+
+[[structure.features]]
+id = "horn"
+prompt = "unicorn horn"
+shape = "spike"
+
 # The scene around the structure, split into four layers.
 
 # A band along the bottom of the image that the structure rests in.

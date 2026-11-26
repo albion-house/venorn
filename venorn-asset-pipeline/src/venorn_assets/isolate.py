@@ -8,7 +8,7 @@ import math
 import numpy as np
 from PIL import Image, ImageFilter
 
-from . import bare
+from . import bare, features
 from .source import Source
 
 # Small things are enlarged until their longer side is about this many pixels.
@@ -82,6 +82,11 @@ def isolate(source: Source) -> None:
     items.append({"id": structure_id, "kind": structure_id, "role": "structure", "crop": list(crop), "scale": 1.0})
     print(f"isolate: cleared {additions.sum() / on_structure.sum():.0%} of the {structure_id} to make it bare")
 
+    # Named places on the bare structure, for the game to start its surprises from.
+    places = features.find_features(bare_image, on_structure, crop, source.structure.features)
+    if places:
+        print(f"isolate: found {', '.join(place['id'] for place in places)} on the {structure_id}")
+
     for kind in source.kinds:
         instances = [i for i in record["instances"] if i["kind"] == kind.id]
         if not instances:
@@ -112,7 +117,8 @@ def isolate(source: Source) -> None:
                 }
             )
 
-    (out / "isolated.json").write_text(json.dumps({"source": source.name, "items": items}, indent=2) + "\n")
+    record_out = {"source": source.name, "features": places, "items": items}
+    (out / "isolated.json").write_text(json.dumps(record_out, indent=2) + "\n")
     _contact_sheet(out, [item["id"] for item in items if item["role"] != "structure"]).save(out / "sheet.png")
     print(f"isolate: cut out {len(items)} things. See {out / 'sheet.png'}")
 
