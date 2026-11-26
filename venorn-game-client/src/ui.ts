@@ -13,6 +13,8 @@ export interface Category {
   id: string;
   name: string;
   choices: Choice[];
+  /** Buttons shown after the variations, such as a pen's undo. */
+  actions?: { label: string; preview: string; act: () => void }[];
 }
 
 export interface OnScreen {
@@ -91,6 +93,11 @@ export function showCategory(
         const button = tile(choice, `${categories[index].name} ${i + 1}`);
         button.setAttribute("role", "option");
         button.addEventListener("click", () => onVariation(i));
+        return button;
+      }),
+      ...(categories[index].actions ?? []).map((action) => {
+        const button = tile({ id: action.label, preview: action.preview }, action.label);
+        button.addEventListener("click", action.act);
         return button;
       }),
     );

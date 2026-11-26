@@ -45,7 +45,7 @@ The `phone` task prints the addresses to open. It serves the built site, so run 
 
 ## In the viewer
 
-The dock along the bottom holds the five categories: butterflies, candies, pills, jewels and flowers. The strip above it holds the variations of the chosen category. A placed thing is selected, and a dashed ring marks it.
+The dock along the bottom holds the five categories (butterflies, candies, pills, jewels and flowers) and a glitter pen. The strip above it holds the variations of the chosen category. A placed thing is selected, and a dashed ring marks it.
 
 | To | With a mouse and keys | With touch |
 | --- | --- | --- |
@@ -60,6 +60,8 @@ The dock along the bottom holds the five categories: butterflies, candies, pills
 | Change its color, lift, tilt, depth, wrap, fold or bend | Press Design on the wheel | The same |
 | Remove a thing | Right-click it, press Delete, or press Remove on the wheel | Press Remove on the wheel |
 | Clear the selection | Click the sky, or press Escape | Tap the sky |
+| Draw with the glitter pen | Press `6` or click the pen in the dock, pick an ink in the strip, and drag on the skull | Tap the pen in the dock, pick an ink, and drag on the skull |
+| Take back a stroke | Press `Z`, or click the arrow at the end of the strip | Tap the arrow at the end of the strip |
 | Turn the camera | Drag anywhere but the selected thing | Drag with one finger |
 | Zoom | Scroll | Pinch |
 | Pan | Right-drag or Shift+drag | Drag with two fingers |

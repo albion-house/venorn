@@ -27,6 +27,15 @@ export interface Scene {
   turn(thing: Placed, degrees: number): void;
   remove(thing: Placed): void;
   cameraEnabled(on: boolean): void;
+  /** Whether a pen is chosen, so a drag on the structure draws. */
+  painting(): boolean;
+  /** Stop or allow a one-finger drag turning the camera. Two fingers still zoom and pan. */
+  cameraTurns(on: boolean): void;
+  strokeBegin(hit: Hit): void;
+  strokeDraw(hit: Hit): void;
+  /** The pointer left the structure in the middle of a stroke. */
+  strokeLift(): void;
+  strokeEnd(): void;
   /** A gesture on a thing has started or ended. */
   shaping(on: boolean): void;
 }
@@ -49,7 +58,7 @@ export function watchGestures(scene: Scene): void {
   const { canvas } = scene;
   const pointers = new Map<number, { x: number; y: number }>();
   let down: { x: number; y: number; button: number; thing?: Placed } | undefined;
-  let mode: "camera" | "move" | "shape" = "camera";
+  let mode: "camera" | "move" | "shape" | "paint" = "camera";
   let moved = false;
   let last: Spread | undefined;
 
@@ -65,6 +74,18 @@ export function watchGestures(scene: Scene): void {
     "pointerdown",
     (event) => {
       pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+      if (pointers.size === 1 && event.button === 0 && scene.painting()) {
+        // With a pen chosen, a press on the structure starts a stroke. A press anywhere else moves the camera.
+        down = { x: event.clientX, y: event.clientY, button: event.button };
+        moved = false;
+        const hit = scene.surfaceAt(event.clientX, event.clientY);
+        if (hit) {
+          mode = "paint";
+          scene.cameraTurns(false);
+          scene.strokeBegin(hit);
+        }
+        return;
+      }
       if (pointers.size === 1) {
         down = {
           x: event.clientX,
@@ -83,6 +104,12 @@ export function watchGestures(scene: Scene): void {
         return;
       }
       moved = true;
+      if (mode === "paint") {
+        // A second finger ends the stroke, and the two fingers zoom and pan.
+        scene.strokeEnd();
+        mode = "camera";
+        return;
+      }
       const [first, second] = [...pointers.values()];
       if (scene.selected() && (mode === "move" || reaches((first.x + second.x) / 2, (first.y + second.y) / 2))) {
         // Two fingers on the selected thing resize and turn it.
@@ -108,7 +135,11 @@ export function watchGestures(scene: Scene): void {
       }
       if (!moved) return;
 
-      if (mode === "move" && down?.thing && pointers.size === 1) {
+      if (mode === "paint") {
+        const hit = scene.surfaceAt(pointer.x, pointer.y);
+        if (hit) scene.strokeDraw(hit);
+        else scene.strokeLift();
+      } else if (mode === "move" && down?.thing && pointers.size === 1) {
         const hit = scene.surfaceAt(pointer.x, pointer.y);
         if (hit) scene.move(down.thing, hit);
       } else if (mode === "shape" && pointers.size >= 2 && last) {
@@ -131,7 +162,10 @@ export function watchGestures(scene: Scene): void {
     pointers.delete(event.pointerId);
     if (pointers.size > 0) return;
     const tapped = down && !moved && event.type === "pointerup";
-    if (tapped && down) {
+    if (mode === "paint") scene.strokeEnd();
+    else if (tapped && down && scene.painting()) {
+      // With a pen chosen, a tap off the structure does nothing.
+    } else if (tapped && down) {
       if (down.button === 2) {
         if (down.thing) scene.remove(down.thing);
       } else if (down.button === 0 && down.thing) {
@@ -146,6 +180,7 @@ export function watchGestures(scene: Scene): void {
     down = undefined;
     last = undefined;
     scene.cameraEnabled(true);
+    scene.cameraTurns(true);
     scene.shaping(false);
   };
   canvas.addEventListener("pointerup", release, { capture: true });

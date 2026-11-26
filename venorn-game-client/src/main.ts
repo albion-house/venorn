@@ -7,6 +7,7 @@ import { buildLinks, type Links } from "./links";
 import { createMusic, type Music } from "./music";
 import { applySettings, createPlaced, defaultSettings, swell, throb, type Placed } from "./placement";
 import { buildMeadow, gustAt, type Meadow } from "./meadow";
+import { buildPen, inkPicture, INKS, undoPicture, type Pen } from "./pen";
 import { buildSurroundings, type Surroundings } from "./scene";
 import { bus, playBirdCall, playGlitter, playPin, playRemove, setGust, setSound, startWind } from "./sound";
 import { buildSurprises, SPEW_SECONDS, type Surprises } from "./surprises";
@@ -83,6 +84,11 @@ let surroundings: Surroundings | undefined;
 let meadow: Meadow | undefined;
 let surprises: Surprises | undefined;
 let music: Music | undefined;
+let pen: Pen | undefined;
+// The id of the category that holds the pen's inks in place of models.
+const PEN = "pen";
+// The moment of the pen's last sound, so that a long stroke makes a few sounds and not hundreds.
+let penSounded = 0;
 let links: Links | undefined;
 // The thing whose note sounded last. The next note's line starts from it.
 let lastSounded: (typeof placed)[number] | undefined;
@@ -155,6 +161,15 @@ function currentId(): string {
   return categories[category].choices[variation[category]].id;
 }
 
+/** Whether the pen is chosen in the dock. */
+function painting(): boolean {
+  return categories[category]?.id === PEN;
+}
+
+function undoStroke(): void {
+  say(pen?.undo() ? "Took back the last stroke" : "No stroke to take back");
+}
+
 /** Show a category in the dock and its variations in the strip. */
 function show(index: number): void {
   category = index;
@@ -164,6 +179,13 @@ function show(index: number): void {
 /** Choose a category. A selected thing turns into that category's current variation. */
 function chooseCategory(index: number): void {
   if (!categories[index]) return;
+  if (categories[index].id === PEN) {
+    // The pen draws on the structure, so no thing stays selected while it is chosen.
+    select(undefined);
+    show(index);
+    say(`Glitter pen: drag on the skull to draw. ${precise ? "Press Z" : "Tap the arrow"} to take back a stroke`);
+    return;
+  }
   show(index);
   if (selected) swap(selected, currentId());
   else say(`${categories[index].name}: ${precise ? "click" : "tap"} the skull to place one`);
@@ -174,7 +196,7 @@ function chooseVariation(index: number): void {
   const count = categories[category].choices.length;
   variation[category] = ((index % count) + count) % count;
   ui.showVariation(categories, category, variation[category]);
-  if (selected) swap(selected, currentId());
+  if (selected && !painting()) swap(selected, currentId());
 }
 
 function stepVariation(by: number): void {
@@ -368,6 +390,7 @@ function takeOff(thing: Placed): void {
 
 function clear(): void {
   while (placed.length > 0) unpin(placed[0].thing);
+  pen?.clear();
 }
 
 /** Put every thing where the painting has it, and its mirror image on the far side. */
@@ -480,6 +503,11 @@ function place(hit: Hit): void {
 
 function watchKeys(): void {
   window.addEventListener("keydown", (event) => {
+    if (event.key.toLowerCase() === "z" && painting()) {
+      undoStroke();
+      event.preventDefault();
+      return;
+    }
     if (event.metaKey || event.ctrlKey) return;
     // A slider that has the keyboard keeps its arrow keys.
     if (event.target instanceof HTMLInputElement && event.key.startsWith("Arrow")) return;
@@ -574,12 +602,24 @@ async function start(): Promise<void> {
   low = bounds.min.y;
   high = bounds.max.y;
 
+  pen = buildPen(structure, STRUCTURE_SIZE);
+  scene.add(pen.group);
+  variation[categories.length] = 0;
+  categories.push({
+    id: PEN,
+    name: "Glitter pen",
+    choices: INKS.map((ink) => ({ id: `${PEN}:${ink.id}`, preview: inkPicture(ink) })),
+    actions: [{ label: "Take back the last stroke", preview: undoPicture(), act: undoStroke }],
+  });
+
   ui.buildDock(categories, chooseCategory);
   show(0);
   ui.watchMenu();
   ui.onWheel((action) => {
     if (!selected) return;
-    if (action === "kind") chooseCategory((category + 1) % categories.length);
+    // Kind steps through the categories of things and passes over the pen.
+    const kinds = categories.filter((group) => group.id !== PEN).length;
+    if (action === "kind") chooseCategory((category + 1) % kinds);
     else if (action === "variation") stepVariation(1);
     else if (action === "remove") takeOff(selected);
     else {
@@ -607,6 +647,24 @@ async function start(): Promise<void> {
     cameraEnabled: (on) => {
       controls.enabled = on;
     },
+    painting,
+    cameraTurns: (on) => {
+      controls.enableRotate = on;
+    },
+    strokeBegin: (hit) => {
+      pen?.begin(hit, INKS[variation[category]]);
+      playGlitter(0.03);
+      penSounded = performance.now();
+    },
+    strokeDraw: (hit) => {
+      pen?.draw(hit);
+      if (performance.now() - penSounded > 350) {
+        playGlitter(0.03);
+        penSounded = performance.now();
+      }
+    },
+    strokeLift: () => pen?.lift(),
+    strokeEnd: () => pen?.end(),
     shaping: (on) => {
       // A thing that was dragged may now lie along the spike.
       if (shaping && !on) checkRow();
@@ -661,6 +719,7 @@ async function start(): Promise<void> {
     meadow?.update(seconds);
     surprises?.update(seconds, camera, renderer.domElement.height);
     playMusic(seconds);
+    pen?.update(seconds, surroundings?.sun.position ?? camera.position);
     setGust(gustAt(seconds));
     controls.target.clamp(farthest, reach);
     controls.update();
@@ -687,6 +746,7 @@ async function start(): Promise<void> {
       state: () => ({ category, variation, selected, wheelOpen, designOpen, onScreen, lush, rowBest, rabbits }),
       surprises,
       links,
+      pen,
       sendRabbit,
       sounding: () => placed.filter((entry) => clock - entry.soundedAt < entry.rings).length,
       hold: (on: boolean) => {
