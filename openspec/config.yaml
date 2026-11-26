@@ -1,0 +1,42 @@
+schema: spec-driven
+
+context: |
+  venorn is a calm browser game about adorning a skull in a meadow. The player
+  pins objects to a unicorn skull and paints on it, building a shrine that ends
+  up looking like a poster. The look comes from the Fawnicorn painting
+  "Veneration Ornamentation".
+
+  The scene is real 3D seen from the front: the camera turns a few degrees to
+  the left and right and never shows the far side. The game has to work with
+  touch on a phone and with a mouse.
+
+  Repository areas:
+  - venorn-asset-pipeline/ is a Python project (uv) that turns a source image
+    into GLB models, each with a JSON file of adjustment criteria.
+  - venorn-game-client/ is a TypeScript and three.js client built with Vite.
+    Its build output is the future GitHub Pages site.
+  - mise runs every task in monorepo mode: mise //<directory>:<task>.
+
+  Consolidated specs in openspec/specs/ describe current intended behavior.
+  Propose behavior changes under openspec/changes/<change-name>/, implement
+  them, then archive them into the consolidated specs.
+
+rules:
+  proposal:
+    - Keep a proposal to one coherent increment of the game or its tooling.
+    - Say why this increment is the next step toward a playable game.
+    - Separate what exists now from the behavior being proposed.
+    - End with a "## Citations" heading that links any preference or principle pages that shaped the proposal.
+  specs:
+    - Requirements describe observable behavior. Implementation choices belong in design.md.
+    - Give every requirement a scenario that a test, a task run or a look at the browser can check.
+    - Create a new capability only when the behavior does not fit an existing spec.
+  design:
+    - Keep "Decisions" as the current state of the design, rewritten as understanding changes.
+    - End with "## Resolved Questions" and "## Open Questions". Give each question its own numbered heading in the form "### N - <question>". Append new questions with the next number.
+    - A resolved question is followed by its answer as prose. An open question is followed by an <ANSWER_HERE> placeholder on its own line.
+    - Background that the drafting agent adds to an open question goes in a blockquote under the question heading, above the placeholder.
+    - List as non-goals only goals that compete for attention now. Write "none" when there are none.
+  tasks:
+    - Order tasks by dependency and keep each one reviewable by itself.
+    - Include tasks that run the pipeline or the client and check the result.

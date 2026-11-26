@@ -1,0 +1,36 @@
+# Machine-specific mise overrides.
+mise.local.toml
+mise.*.local.toml
+mise.local.lock
+mise.*.local.lock
+
+# Local environment and editor state.
+.env
+.env.*
+!.env.example
+.DS_Store
+.vscode/
+.idea/
+
+# Git worktrees for branches in progress.
+.worktrees/
+.claude/worktrees/
+
+# Python environments and caches.
+.venv/
+__pycache__/
+*.egg-info/
+
+# Web dependencies and build output.
+node_modules/
+dist/
+
+# Asset pipeline working files: downloaded source art, model weights and
+# every stage's output. `mise //venorn-asset-pipeline:build` recreates them.
+venorn-asset-pipeline/.cache/
+venorn-asset-pipeline/build/
+
+# Asset sets exported by the pipeline for the game client to load.
+venorn-game-client/public/assets/
+
+*.log

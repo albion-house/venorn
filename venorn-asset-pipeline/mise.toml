@@ -1,0 +1,5 @@
+[tools]
+# torch and transformers publish wheels for this Python. Wheels for newer
+# Python releases arrive later.
+python = "3.13"
+uv = "latest"

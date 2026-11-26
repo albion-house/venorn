@@ -1,0 +1,28 @@
+#:schema https://mise.jdx.dev/schema/mise.json
+
+# `monorepo_root` is the current name for mise's monorepo mode. Older mise
+# releases only know `experimental_monorepo_root`. This config was checked
+# against 2026.11.8.
+min_version = "2026.11.8"
+
+# Each directory in [monorepo].config_roots owns its tools and file tasks.
+# Run a project's task from anywhere as //<directory>:<task>, for example
+# `mise //venorn-asset-pipeline:build`. Tasks in ./mise-tasks are //:<task>.
+monorepo_root = true
+
+[monorepo]
+config_roots = ["venorn-asset-pipeline", "venorn-game-client"]
+# One mise.lock at the repository root covers every project's tools.
+lockfile = true
+
+[settings]
+lockfile = true
+# Hold back tool and npm package versions younger than five days, so a
+# compromised release has time to be caught before it is installed here.
+minimum_release_age = "5d"
+
+[tools]
+node = "24"
+# npm-compatible package manager. mise's npm backend uses it when it is installed.
+aube = "latest"
+"npm:@fission-ai/openspec" = "latest"
