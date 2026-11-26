@@ -66,6 +66,12 @@ The dock along the bottom holds the five categories: butterflies, candies, pills
 
 The button in the top left corner opens the menu: Front view, Rear view, Arrange as painted, Clear, Painted skull and Sound.
 
+The scene answers the decorating:
+
+- The meadow starts as low shoots and grows to its full height by the time 24 things are on the skull.
+- Each thing placed lets out a puff of glitter from the tip of the horn. Three or more things in a row along the horn set off a burst of rainbow glitter, at most once in five minutes.
+- A rabbit comes out of the eye socket with the sixth thing, and now and then after that, and bounds away toward the gap in the forest.
+
 ## Working on venorn
 
 Each piece of work starts as an OpenSpec change under `openspec/changes/`. Read `AGENTS.md` before changing the repository.

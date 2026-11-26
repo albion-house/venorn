@@ -64,6 +64,27 @@ def export(source: Source) -> None:
     def upward(row: float) -> float:
         return round((origin_y - row) * scale, 4)
 
+    def spot(point: list[float]) -> list[float]:
+        return [across(point[0]), upward(point[1])]
+
+    # Named places on the structure, in its model units.
+    isolated = json.loads((source.stage_dir("isolated") / "isolated.json").read_text())
+    features = []
+    for place in isolated.get("features", []):
+        if place["shape"] == "hollow":
+            features.append(
+                {
+                    "id": place["id"],
+                    "shape": "hollow",
+                    "center": spot(place["center"]),
+                    "radius": round(place["radius"] * scale, 4),
+                }
+            )
+        else:
+            features.append(
+                {"id": place["id"], "shape": "spike", "tip": spot(place["tip"]), "base": spot(place["base"])}
+            )
+
     # The layers around the structure, placed in the structure's model units.
     scene = None
     layers_dir = source.stage_dir("layers")
@@ -122,6 +143,7 @@ def export(source: Source) -> None:
             "model": structure["model"],
             "painted": structure["painted"],
             "thickness": structure["thickness"],
+            "features": features,
         },
         "kinds": kinds,
         "categories": categories,

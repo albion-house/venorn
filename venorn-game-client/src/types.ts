@@ -43,13 +43,19 @@ export interface ModelEntry {
 export interface Manifest {
   source: string;
   title: string;
-  structure: { id: string; model: string; painted: string; thickness: number };
+  structure: { id: string; model: string; painted: string; thickness: number; features?: Feature[] };
   kinds: { id: string; role: "pinned" | "printed"; models: ModelEntry[] }[];
   // The groups the player chooses from, in the order of the number keys.
   categories: { id: string; name: string; kinds: string[] }[];
   arrangement: { kind: string; x: number; y: number; size: number; angle: number }[];
   scene: SceneLayers | null;
 }
+
+// A named place on the structure, in its model units: a hollow such as an eye
+// socket, or a spike such as a horn.
+export type Feature =
+  | { id: string; shape: "hollow"; center: [number, number]; radius: number }
+  | { id: string; shape: "spike"; tip: [number, number]; base: [number, number] };
 
 // One layer of the scene around the structure. Its edges are where the layer
 // sits in the source image, in the structure's model units. distance is how

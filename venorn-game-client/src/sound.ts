@@ -158,3 +158,29 @@ export function playBirdCall(across: number): void {
     voice.stop(at + 0.17);
   }
 }
+
+/**
+ * Glitter: a scatter of small, bright pings. strength runs from 0 for a few
+ * sparkles to 1 for a burst, and the pings are spread over the given seconds.
+ */
+export function playGlitter(strength: number, seconds = 0.5): void {
+  if (!context || !master) return;
+  // Notes of a pentatonic scale, high up, so any of them sound well together.
+  const notes = [1568, 1760, 2093, 2349, 2637, 3136, 3520, 4186];
+  const pings = Math.round(3 + 22 * strength * Math.max(1, seconds));
+  for (let ping = 0; ping < pings; ping++) {
+    const at = context.currentTime + Math.random() * seconds;
+    const voice = context.createOscillator();
+    voice.type = "sine";
+    voice.frequency.value = notes[Math.floor(Math.random() * notes.length)] * (Math.random() < 0.3 ? 2 : 1);
+    const gain = context.createGain();
+    gain.gain.setValueAtTime(0.0001, at);
+    gain.gain.exponentialRampToValueAtTime(0.012 + 0.03 * strength * Math.random(), at + 0.006);
+    gain.gain.exponentialRampToValueAtTime(0.0001, at + 0.25 + Math.random() * 0.35);
+    const pan = context.createStereoPanner();
+    pan.pan.value = Math.random() * 1.2 - 0.6;
+    voice.connect(gain).connect(pan).connect(master);
+    voice.start(at);
+    voice.stop(at + 0.65);
+  }
+}

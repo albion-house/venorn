@@ -44,11 +44,24 @@ class Category:
     kinds: tuple[str, ...]
 
 
+SHAPES = ("hollow", "spike")
+
+
+@dataclass(frozen=True)
+class Feature:
+    """A named place on the structure: a hollow such as an eye socket, or a spike such as a horn."""
+
+    id: str
+    prompt: str
+    shape: str
+
+
 @dataclass(frozen=True)
 class Structure:
     id: str
     prompts: tuple[str, ...]
     thickness: float = 0.15
+    features: tuple[Feature, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -162,6 +175,11 @@ def load_source(name: str, root: Path | None = None) -> Source:
         )
 
     structure = data["structure"]
+    features = []
+    for entry in structure.get("features", []):
+        if entry.get("shape") not in SHAPES:
+            raise SystemExit(f"{path}: feature {entry['id']} has shape {entry.get('shape')}; use one of {SHAPES}")
+        features.append(Feature(id=entry["id"], prompt=entry["prompt"].lower(), shape=entry["shape"]))
     return Source(
         name=data["name"],
         title=data.get("title", data["name"]),
@@ -171,6 +189,7 @@ def load_source(name: str, root: Path | None = None) -> Source:
             id=structure["id"],
             prompts=tuple(p.lower() for p in structure["prompts"]),
             thickness=float(structure.get("thickness", 0.15)),
+            features=tuple(features),
         ),
         kinds=tuple(kinds),
         categories=categories,
