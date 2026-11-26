@@ -6,7 +6,7 @@ Where venorn stands as of 2026-11-26, what waits on codekiln, and what was discu
 
 | What | Pull request |
 | --- | --- |
-| Asset pipeline: the painting becomes a bare skull, 34 models with adjustment criteria, and scene layers | [#2](https://github.com/albion-house/venorn/pull/2), [#4](https://github.com/albion-house/venorn/pull/4) |
+| Asset pipeline: the painting becomes a bare skull, models with adjustment criteria (34 since #16), and scene layers | [#2](https://github.com/albion-house/venorn/pull/2), [#4](https://github.com/albion-house/venorn/pull/4) |
 | Diorama scene: free camera, layers, a meadow of cut paper, clouds that slither, birds, wind | [#4](https://github.com/albion-house/venorn/pull/4), [#8](https://github.com/albion-house/venorn/pull/8), [#10](https://github.com/albion-house/venorn/pull/10) |
 | Painted sprigs whose flowers stand out from the bone | [#12](https://github.com/albion-house/venorn/pull/12) |
 | Serving the built game to a phone | [#14](https://github.com/albion-house/venorn/pull/14), [#24](https://github.com/albion-house/venorn/pull/24) |
