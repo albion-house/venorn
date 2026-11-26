@@ -147,3 +147,18 @@ def test_far_layer_keeps_its_pixels_along_the_sides_of_the_image():
     mask[10:, :] = True
 
     assert layers._close(mask, 2)[10:, [0, -1]].all()
+
+
+def test_top_edge_dips_where_the_layer_has_a_gap():
+    """Two hills with a valley between them."""
+    mask = np.zeros((100, 300), dtype=bool)
+    mask[30:, :100] = True
+    mask[70:, 100:200] = True
+    mask[40:, 200:] = True
+
+    edge = layers.top_edge(mask, 7)
+
+    assert [column for column, _ in edge] == [0, 50, 100, 150, 199, 249, 299]
+    assert [row for _, row in edge][:2] == [30, 30]
+    assert edge[3][1] == 70
+    assert [row for _, row in edge][-2:] == [40, 40]

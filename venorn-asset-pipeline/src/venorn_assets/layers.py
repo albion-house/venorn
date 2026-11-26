@@ -33,6 +33,8 @@ MIN_BLUE_SHARE = 0.35
 BLUE_HUE = (178.0, 265.0)
 # Gaps in the far layer narrower than twice this many pixels are joined up behind the floating layer.
 FAR_GAP = 45
+# The far layer's top edge is recorded at this many points across the image.
+SKYLINE_POINTS = 96
 # The ground layer is cut into at most this many separate plants, largest first.
 MAX_PLANTS = 16
 # An outline can stop this many pixels short of the image's sides.
@@ -150,6 +152,14 @@ def far_extent(far: np.ndarray, floating: np.ndarray, in_front: np.ndarray) -> n
     return ndimage.binary_fill_holes(walled)[1:-1, 1:-1]
 
 
+def top_edge(mask: np.ndarray, points: int) -> list[list[int]]:
+    """The topmost row of the mask at evenly spaced columns, as [column, row] pairs."""
+    height, width = mask.shape
+    rows = ndimage.median_filter(np.where(mask.any(axis=0), mask.argmax(axis=0), height), size=15, mode="nearest")
+    columns = np.linspace(0, width - 1, points).round().astype(int)
+    return [[int(column), int(rows[column])] for column in columns]
+
+
 def _plate(rgb: np.ndarray, mask: np.ndarray, rows: tuple[int, int]) -> Image.Image:
     """An RGBA picture of one layer, cropped to its rows, with its edge colors spread outward."""
     # The softened edge stops at the sides of the image, where the viewer joins one copy of the picture to the next.
@@ -200,6 +210,9 @@ def layers(source: Source) -> None:
     far_alpha = far_extent(far, floating | leftover, in_front | ground)
     far_rgb = fill(rgb, far_alpha & ~far, far)
 
+    # The far layer's top edge, so the viewer knows where the gaps between its masses are.
+    skyline = top_edge(far_alpha, SKYLINE_POINTS)
+
     plates = {
         scene.ground_id: (rgb, ground),
         scene.floating_id: (rgb, floating),
@@ -235,6 +248,7 @@ def layers(source: Source) -> None:
                 "box": boxes[scene.far_id],
                 "distance": scene.far_distance,
                 "motion": "still",
+                "skyline": skyline,
             },
             {
                 "id": scene.floating_id,
