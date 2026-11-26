@@ -38,7 +38,7 @@ A tap that lands within 14 pixels of the middle of a thing counts as a tap on it
 
 ### Wheel
 
-Tapping a placed thing opens four round buttons around it: Kind above, Variation to the right, Design below and Remove to the left. Kind steps to the next category and Variation to the next variation, so each tap shows a change. The wheel hides while the thing is dragged, pinched or twisted. Near an edge of the screen the wheel moves inward so that all four buttons stay in view, and the ring stays on the thing.
+Tapping a placed thing opens four round buttons around it: Kind above, Variation to the right, Design below and Remove to the left. Kind steps to the next category and Variation to the next variation, so each tap shows a change. The wheel hides while the thing is dragged, pinched or twisted. Near an edge of the screen the buttons gather on the side of the thing that has room, so that all four stay in view and none covers the thing. `fix-simulator-problems` describes how.
 
 Placing a thing selects it but does not open the wheel, so a row of things can be placed with one tap each.
 

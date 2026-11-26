@@ -35,11 +35,19 @@ const status = document.querySelector<HTMLElement>("#status")!;
 const more = document.querySelector<HTMLElement>("#more")!;
 const menu = document.querySelector<HTMLElement>("#menu")!;
 
-// The wheel's buttons sit this far from its middle, at the least and at the most.
-const REACH = [78, 130];
+// The wheel's buttons sit this far from the thing's middle, at the least and at the most. Where they do
+// not fit on the screen at the most, they may go as far as the last number.
+const REACH = [78, 130, 180];
+// A wheel button's width, and the room kept between two buttons and between a button and the screen's edge.
+const BUTTON = 62;
+const BETWEEN = 6;
+const MARGIN = 5;
 // Room the wheel leaves for the status line above and the dock, strip and design bar below.
 const ABOVE = 50;
 const BELOW = 230;
+// The wheel's buttons in order around it, clockwise, and the angles they take when there is room all around.
+const WHEEL_ORDER: WheelAction[] = ["kind", "variation", "design", "remove"];
+const AROUND = [-90, 0, 90, 180];
 
 let shown = -1;
 // The setting the design bar's slider changes, and the slider itself while the bar is open.
@@ -135,15 +143,59 @@ export function placeSelection(at: OnScreen | undefined, open: boolean): void {
   ring.style.transform = `translate(${at.x - at.radius}px, ${at.y - at.radius}px)`;
   if (!open) return;
 
-  // The wheel stays whole on the screen even when the thing is near an edge.
-  const reach = Math.min(REACH[1], Math.max(REACH[0], at.radius + 44));
-  const edge = reach + 36;
+  const layout = layWheel(at);
+  wheel.style.transform = `translate(${layout.x}px, ${layout.y}px)`;
+  for (const button of wheel.querySelectorAll<HTMLElement>("button")) {
+    const angle = (layout.angles[WHEEL_ORDER.indexOf(button.dataset.action as WheelAction)] * Math.PI) / 180;
+    button.style.transform = `translate(${layout.reach * Math.cos(angle)}px, ${layout.reach * Math.sin(angle)}px)`;
+  }
+}
+
+/**
+ * Where the wheel's buttons go. They stand around the thing's middle, clear of the thing, so a finger
+ * on the thing reaches the thing. Near an edge of the screen they gather on the side that has room,
+ * in the same order. Angles are in degrees, clockwise from the right.
+ */
+export function layWheel(at: OnScreen): { x: number; y: number; reach: number; angles: number[] } {
+  const room = BUTTON / 2 + MARGIN;
+  const fits = (x: number, y: number): boolean =>
+    x >= room && x <= window.innerWidth - room && y >= ABOVE + room && y <= window.innerHeight - BELOW - room;
+  const fitsAt = (reach: number, angle: number): boolean => {
+    const radians = (angle * Math.PI) / 180;
+    return fits(at.x + reach * Math.cos(radians), at.y + reach * Math.sin(radians));
+  };
+  const step = 3;
+  const first = Math.min(REACH[1], Math.max(REACH[0], at.radius + 44));
+  for (let reach = first; reach <= REACH[2]; reach += 6) {
+    if (AROUND.every((angle) => fitsAt(reach, angle))) return { x: at.x, y: at.y, reach, angles: AROUND };
+    // The longest run of angles at which a button is whole on the screen, going clockwise.
+    const free = Array.from({ length: 360 / step }, (_, i) => fitsAt(reach, i * step));
+    let best = { start: 0, length: -1 };
+    for (let i = 0; i < free.length; i++) {
+      if (!free[i] || free[(i - 1 + free.length) % free.length]) continue;
+      let count = 0;
+      while (count < free.length && free[(i + count) % free.length]) count++;
+      if (count > best.length) best = { start: i * step, length: (count - 1) * step };
+    }
+    // Neighboring buttons need this many degrees between them so that they do not touch.
+    const least = (2 * Math.asin(Math.min(1, (BUTTON + BETWEEN) / (2 * reach))) * 180) / Math.PI;
+    const spacing = Math.min(90, best.length / 3);
+    if (spacing >= least) {
+      const start = best.start + (best.length - spacing * 3) / 2;
+      return { x: at.x, y: at.y, reach, angles: AROUND.map((_, i) => start + i * spacing) };
+    }
+  }
+  // In a corner with no room around the thing, the wheel moves inward as a whole and stays on the screen.
+  const reach = first;
+  const edge = reach + room;
   const within = (value: number, low: number, high: number): number =>
     low > high ? (low + high) / 2 : Math.min(high, Math.max(low, value));
-  const x = within(at.x, edge, window.innerWidth - edge);
-  const y = within(at.y, edge + ABOVE, window.innerHeight - edge - BELOW);
-  wheel.style.setProperty("--reach", `${reach}px`);
-  wheel.style.transform = `translate(${x}px, ${y}px)`;
+  return {
+    x: within(at.x, edge, window.innerWidth - edge),
+    y: within(at.y, edge + ABOVE, window.innerHeight - edge - BELOW),
+    reach,
+    angles: AROUND,
+  };
 }
 
 function ranges(thing: Placed): [string, NumberSetting, Range][] {
