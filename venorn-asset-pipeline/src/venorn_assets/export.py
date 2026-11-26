@@ -80,7 +80,28 @@ def export(source: Source) -> None:
                 "id": found["backdrop"]["id"],
                 "stops": [[upward(row), color] for row, color in found["backdrop"]["rows"]],
             },
-            "ground": {"y": upward(found["ground"]["row"]), "color": found["ground"]["color"]},
+            "ground": {
+                "y": upward(found["ground"]["row"]),
+                "color": found["ground"]["color"],
+                # The ground layer with its dark base cut away, whole and as separate plants.
+                "cutout": {
+                    "image": f"layer-{found['ground']['cutout']['image']}",
+                    "left": across(found["ground"]["cutout"]["box"][0]),
+                    "right": across(found["ground"]["cutout"]["box"][2]),
+                    "top": upward(found["ground"]["cutout"]["box"][1]),
+                    "bottom": upward(found["ground"]["cutout"]["box"][3]),
+                },
+                "plants": [
+                    {
+                        "id": plant["id"],
+                        "image": f"{plant['id']}.png",
+                        "width": round(plant["width"] * scale, 4),
+                        "height": round(plant["height"] * scale, 4),
+                        "root": plant["root"],
+                    }
+                    for plant in found["ground"]["plants"]
+                ],
+            },
         }
 
     manifest = {
@@ -106,6 +127,10 @@ def export(source: Source) -> None:
     if scene is not None:
         for layer in scene["layers"]:
             shutil.copy2(layers_dir / f"{layer['id']}.png", out / layer["image"])
+        cutout = scene["ground"]["cutout"]["image"]
+        shutil.copy2(layers_dir / cutout.removeprefix("layer-"), out / cutout)
+        for plant in scene["ground"]["plants"]:
+            shutil.copy2(layers_dir / plant["image"], out / plant["image"])
     (out / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
 
     total = sum(len(kind["models"]) for kind in kinds)

@@ -23,8 +23,15 @@
 - [x] 4.1 Wrap the layers around the scene, paint the sky dome and shape the ground. Verify: the front view matches the painting, and the scene surrounds the skull from the back and from above.
 - [x] 4.2 Cast shadows from a sun that circles the sky, drift the clouds, fly birds behind the forest and add the wind sound. Verify: after a scripted minute the cloud ring has turned and the sun has moved.
 
-## 5. Carried over from the first change
+## 5. Paper meadow
 
-- [ ] 5.1 Try the viewer on a phone: pin, adjust, remove, turn, zoom and pan by touch. Verify: each works on a real phone over the local network, with the skull visible while adjusting.
-- [ ] 5.2 Look through `catalog/overlay.png`, `isolated/sheet.png` and `layers/check.png` with codekiln, and note which kinds, exemplars and layer rules to change.
-- [ ] 5.3 Answer the open questions in `design.md`.
+- [x] 5.1 Cut the meadow free of its dark base and split it into plants by their roots, keeping each flower head whole. Verify: unit tests cover the cutout, the roots and a shared flower head, and `layers/plants.png` shows ten plants.
+- [x] 5.2 Export the cutout and the plants in the manifest. Verify: `manifest.json` lists the cutout and each plant with its size and root.
+- [x] 5.3 Stand the plants in a thicket around the skull and wrap rings of cut paper out to the horizon. Verify: pictures read from the canvas show the skull in the thicket from the front, the side and above, with the teeth and jaw in view from the front.
+- [x] 5.4 Sway the paper in a wind, soften and fade it with distance, and give cut edges a pale rim. Verify: between two moments 1.3 seconds apart, 39% of the pixels in the meadow change and 0.6% of the pixels above it do.
+
+## 6. Carried over from the first change
+
+- [ ] 6.1 Try the viewer on a phone: pin, adjust, remove, turn, zoom and pan by touch. Verify: each works on a real phone over the local network, with the skull visible while adjusting.
+- [ ] 6.2 Look through `catalog/overlay.png`, `isolated/sheet.png`, `layers/check.png` and `layers/plants.png` with codekiln, and note which kinds, exemplars and layer rules to change.
+- [ ] 6.3 Answer the open questions in `design.md`.

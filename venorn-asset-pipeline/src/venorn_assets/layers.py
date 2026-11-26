@@ -16,7 +16,7 @@ import numpy as np
 from PIL import Image
 from scipy import ndimage
 
-from . import models
+from . import models, plants
 from .bare import fill
 from .color import hue_saturation_value, to_hex
 from .isolate import bleed_edges
@@ -33,6 +33,8 @@ MIN_BLUE_SHARE = 0.35
 BLUE_HUE = (178.0, 265.0)
 # Gaps in the far layer narrower than twice this many pixels are joined up behind the floating layer.
 FAR_GAP = 45
+# The ground layer is cut into at most this many separate plants, largest first.
+MAX_PLANTS = 16
 # An outline can stop this many pixels short of the image's sides.
 EDGE = 6
 # The structure's soft edge reaches this many pixels past its outline.
@@ -211,8 +213,15 @@ def layers(source: Source) -> None:
 
     ground_rows = np.nonzero(structure.any(axis=1))[0]
     ground_row = int(ground_rows.max() - 0.04 * (ground_rows.max() - ground_rows.min()))
-    ground_hue = (hue > 62) & (hue < 178) & ground
-    ground_color = np.median(rgb[ground_hue if ground_hue.any() else ground], axis=0)
+
+    # The ground layer again as a cutout with its dark base removed, whole and as separate plants.
+    cutout = plants.cut_out(rgb, ground)
+    ground_color = plants.base_color(rgb, ground, cutout)
+    cutout_id = f"{scene.ground_id}-cutout"
+    plants.strip(rgb, cutout, _rows(ground)).save(out / f"{cutout_id}.png")
+    grown = plants.plants(rgb, cutout)[:MAX_PLANTS]
+    for number, plant in enumerate(grown, start=1):
+        plant.picture.save(out / f"plant-{number:02d}.png")
 
     step = max(1, height // 64)
     result = {
@@ -248,16 +257,31 @@ def layers(source: Source) -> None:
             "id": scene.backdrop_id,
             "rows": [[row, to_hex(backdrop[row])] for row in (*range(0, height, step), height - 1)],
         },
-        "ground": {"row": ground_row, "color": to_hex(ground_color)},
+        "ground": {
+            "row": ground_row,
+            "color": to_hex(ground_color),
+            "cutout": {"image": f"{cutout_id}.png", "box": boxes[scene.ground_id]},
+            "plants": [
+                {
+                    "id": f"plant-{number:02d}",
+                    "image": f"plant-{number:02d}.png",
+                    "width": plant.width,
+                    "height": plant.height,
+                    "root": plant.root,
+                }
+                for number, plant in enumerate(grown, start=1)
+            ],
+        },
     }
     (out / "layers.json").write_text(json.dumps(result, indent=2) + "\n")
     _check_picture(rgb, backdrop, far_rgb, far_alpha, floating, ground).save(out / "check.png")
 
+    _plant_sheet(grown).save(out / "plants.png")
     shares = ", ".join(
         f"{name} {mask.mean():.0%}"
         for name, mask in ((scene.far_id, far), (scene.floating_id, floating), (scene.ground_id, ground))
     )
-    print(f"layers: {shares} of the image. See {out / 'check.png'}")
+    print(f"layers: {shares} of the image, and {len(grown)} plants. See {out / 'check.png'} and {out / 'plants.png'}")
 
 
 def _check_picture(
@@ -278,3 +302,17 @@ def _check_picture(
     stacked[ground] = rgb[ground]
     row = np.concatenate([rgb, with_far, stacked], axis=1)
     return Image.fromarray(row).resize((row.shape[1] // 2, row.shape[0] // 2), Image.LANCZOS)
+
+
+def _plant_sheet(grown: list[plants.Plant]) -> Image.Image:
+    """Every plant side by side on a dark card, for a person to check."""
+    if not grown:
+        return Image.new("RGB", (64, 64), (40, 40, 60))
+    tall = max(plant.picture.height for plant in grown) // 2
+    pictures = [plant.picture.resize((plant.picture.width // 2, plant.picture.height // 2)) for plant in grown]
+    sheet = Image.new("RGB", (sum(p.width + 8 for p in pictures), tall + 8), (40, 40, 60))
+    left = 4
+    for picture in pictures:
+        sheet.paste(picture, (left, tall + 4 - picture.height), picture)
+        left += picture.width + 8
+    return sheet

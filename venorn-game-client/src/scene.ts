@@ -1,5 +1,5 @@
 // The scene around the structure: a sky dome, the far and floating layers
-// wrapped around the scene, the ground the structure rests on, a sun and birds.
+// wrapped around the scene, a sun and birds. meadow.ts builds the ground.
 
 import * as THREE from "three";
 import type { Layer, SceneLayers } from "./types";
@@ -7,8 +7,9 @@ import type { Layer, SceneLayers } from "./types";
 export interface Surroundings {
   group: THREE.Group;
   sun: THREE.DirectionalLight;
-  /** The nearest that a layer wrapped around the scene comes to the middle. */
+  /** How near and how far the layers wrapped around the scene stand from the middle. */
   innerRadius: number;
+  outerRadius: number;
   update(seconds: number): void;
 }
 
@@ -61,13 +62,12 @@ function buildRing(
   structureSize: number,
   viewDistance: number,
 ): THREE.Mesh {
-  // A layer behind the structure is seen from inside its ring, a layer around the structure from outside.
-  const inside = radius > viewDistance;
-  const grow = inside ? (viewDistance + radius) / viewDistance : (viewDistance - radius) / viewDistance;
+  // The ring is seen from inside. A picture that far away has to be larger to look the size it is in the image.
+  const grow = (viewDistance + radius) / viewDistance;
   const width = (layer.right - layer.left) * structureSize * grow;
   const copies = Math.max(2, 2 * Math.round(TURN / (width / radius) / 2));
   const middle = ((layer.left + layer.right) / 2) * structureSize * grow;
-  const facing = inside ? Math.PI + middle / radius : middle / radius;
+  const facing = Math.PI + middle / radius;
 
   texture.colorSpace = THREE.SRGBColorSpace;
   texture.wrapS = THREE.MirroredRepeatWrapping;
@@ -76,42 +76,18 @@ function buildRing(
 
   const height = (layer.top - layer.bottom) * structureSize * grow;
   const geometry = new THREE.CylinderGeometry(radius, radius, height, copies * 24, 1, true, facing - TURN / copies / 2);
-  const material = new THREE.MeshBasicMaterial({ map: texture, side: THREE.DoubleSide, fog: false });
-  if (layer.role === "ground") {
-    material.alphaTest = 0.5;
-  } else {
-    material.transparent = true;
-    material.depthWrite = false;
-  }
+  const material = new THREE.MeshBasicMaterial({
+    map: texture,
+    side: THREE.DoubleSide,
+    fog: false,
+    transparent: true,
+    depthWrite: false,
+  });
   const ring = new THREE.Mesh(geometry, material);
   ring.position.y = ((layer.top + layer.bottom) / 2) * structureSize * grow;
   // Seen from inside, a ring shows its picture mirrored, so it is flipped back.
-  if (inside) ring.scale.x = -1;
+  ring.scale.x = -1;
   return ring;
-}
-
-/** The ground: flat under the structure, then falling away so the far layer stands right behind the ground layer. */
-function buildGround(
-  scene: SceneLayers,
-  flatRadius: number,
-  outerRadius: number,
-  structureSize: number,
-  viewDistance: number,
-): THREE.Mesh {
-  const level = scene.ground.y * structureSize;
-  // Past the flat part, the ground follows the front view's line of sight, so the front view sees it edge on.
-  const fall = (radius: number): number => (level * (viewDistance + radius)) / (viewDistance + flatRadius);
-  const profile = [
-    new THREE.Vector2(0, level),
-    new THREE.Vector2(flatRadius, level),
-    new THREE.Vector2(outerRadius, fall(outerRadius)),
-  ];
-  const ground = new THREE.Mesh(
-    new THREE.LatheGeometry(profile, 96),
-    new THREE.MeshStandardMaterial({ color: scene.ground.color, roughness: 1, side: THREE.DoubleSide }),
-  );
-  ground.receiveShadow = true;
-  return ground;
 }
 
 function buildSunDisc(): THREE.Sprite {
@@ -176,32 +152,29 @@ export async function buildSurroundings(
   group.add(buildSky(scene, structureSize, viewDistance));
 
   const loader = new THREE.TextureLoader();
-  const groundLayer = scene.layers.find((layer) => layer.role === "ground");
-  // The ground layer stands in a ring just outside the structure.
-  const groundRadius = 0.62 * structureSize;
   let drifting: THREE.Mesh | undefined;
   let innerRadius = Infinity;
-  let outerRadius = groundRadius * 4;
+  let outerRadius = 0;
 
-  const order: Record<Layer["role"], number> = { far: -5, floating: -4, ground: 0 };
+  // The ground layer is the meadow's to build. The far and floating layers wrap around the scene.
+  const order = { far: -5, floating: -4 };
   for (const layer of scene.layers) {
+    if (layer.role === "ground") continue;
     const texture = await loader.loadAsync(assets + layer.image);
-    const radius = layer.role === "ground" ? groundRadius : layer.distance * structureSize;
+    const radius = layer.distance * structureSize;
     const ring = buildRing(layer, texture, radius, structureSize, viewDistance);
     ring.renderOrder = order[layer.role];
     group.add(ring);
-    if (layer.role !== "ground") {
-      innerRadius = Math.min(innerRadius, radius);
-      outerRadius = Math.max(outerRadius, radius);
-    }
+    innerRadius = Math.min(innerRadius, radius);
+    outerRadius = Math.max(outerRadius, radius);
     if (layer.motion === "drift") drifting = ring;
   }
-  if (groundLayer) group.add(buildGround(scene, groundRadius, outerRadius + 4, structureSize, viewDistance));
 
   const sun = new THREE.DirectionalLight(0xfff1d6, 2.2);
   sun.castShadow = true;
   sun.shadow.mapSize.set(2048, 2048);
-  const reach = structureSize * 0.9;
+  // Shadows are drawn for the structure and the thicket right around it.
+  const reach = structureSize * 1.15;
   Object.assign(sun.shadow.camera, { left: -reach, right: reach, top: reach, bottom: -reach, near: 1, far: 60 });
   sun.shadow.camera.updateProjectionMatrix();
   sun.shadow.bias = -0.0004;
@@ -241,5 +214,5 @@ export async function buildSurroundings(
   }
   update(0);
 
-  return { group, sun, innerRadius, update };
+  return { group, sun, innerRadius, outerRadius, update };
 }

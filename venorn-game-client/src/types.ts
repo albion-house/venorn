@@ -67,7 +67,23 @@ export interface SceneLayers {
   layers: Layer[];
   // The backdrop's color at each height, from the top of the image down to its horizon.
   backdrop: { id: string; stops: [number, string][] };
-  ground: { y: number; color: string };
+  ground: {
+    y: number;
+    color: string;
+    // The ground layer with its dark base cut away: one long picture, placed like a layer.
+    cutout: { image: string; left: number; right: number; top: number; bottom: number };
+    plants: Plant[];
+  };
+}
+
+// One plant cut from the ground layer. Sizes are in the structure's model units.
+// root is where the stem meets the ground, along the picture's width from 0 to 1.
+export interface Plant {
+  id: string;
+  image: string;
+  width: number;
+  height: number;
+  root: number;
 }
 
 // What the player has chosen for one thing on the structure.

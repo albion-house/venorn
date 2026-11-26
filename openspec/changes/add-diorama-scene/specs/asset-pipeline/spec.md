@@ -69,12 +69,13 @@ The pipeline SHALL export one source's models, criteria, preview pictures and sc
 - **WHEN** the export stage runs on a source that declares a scene
 - **THEN** the manifest lists each layer with its picture, its edges in the structure's model units and its distance from the structure
 - **AND** the manifest gives the backdrop's colors by height and the level and color of the ground
+- **AND** the manifest lists the ground's cutout and each plant with its picture, its size and where its root is
 
 ## ADDED Requirements
 
 ### Requirement: Scene layers
 
-For a source that declares a scene, the pipeline SHALL split the image around the structure into a ground layer, a floating layer, a far layer and a backdrop. The far layer SHALL carry on behind the floating layer, the structure and the ground. The pipeline SHALL write a picture of the layers for a person to check.
+For a source that declares a scene, the pipeline SHALL split the image around the structure into a ground layer, a floating layer, a far layer and a backdrop. The far layer SHALL carry on behind the floating layer, the structure and the ground. The pipeline SHALL cut the ground layer free of its dark base and split it into separate plants. It SHALL write pictures of the layers and of the plants for a person to check.
 
 #### Scenario: Painting is split into layers
 
@@ -91,6 +92,17 @@ For a source that declares a scene, the pipeline SHALL split the image around th
 
 - **WHEN** the forest layer is looked at alone
 - **THEN** the forest fills the area the skull, the horn and the meadow covered in the painting
+
+#### Scenario: Meadow is cut into paper plants
+
+- **WHEN** the layers stage runs on the `veneration-ornamentation` source
+- **THEN** the meadow is also written with its dark base cut away, leaving the leaves, stems and flowers
+- **AND** each plant that grows from a stem at the bottom of the image is written as its own picture, with its root recorded
+
+#### Scenario: Flower head stays whole
+
+- **WHEN** two plants meet inside one flower head
+- **THEN** the whole head belongs to one of them
 
 #### Scenario: Source declares no scene
 

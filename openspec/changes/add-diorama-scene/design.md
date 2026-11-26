@@ -20,7 +20,7 @@ The work stays on this Mac, an M2 Pro with 16 GB of memory, with no API key.
 - Models made by a generative image-to-3D model. Open question 1 covers what running one on this Mac needs.
 - Cutouts redrawn at higher resolution before they are lifted.
 - Clouds that change shape as they drift.
-- A ground with its own grass and flowers between the meadow ring and the forest.
+- Plants with depth of their own. Each plant is a flat cutout.
 
 ## Decisions
 
@@ -63,12 +63,23 @@ The forest is hidden by the clouds, the skull and the meadow. Without filling, t
 
 Each layer's picture is wrapped around the scene on a cylinder and repeated, with every second copy mirrored so the copies join. One copy faces the front view at the size and place it has in the painting, so the front view reproduces the painting.
 
-- The meadow stands in a ring just outside the skull.
 - The clouds and the forest stand at the distances the source declares, 6.5 and 8.5 skull lengths.
 - The sky is a dome painted with the backdrop's gradient.
-- The ground is flat under the skull and then falls away along the front view's line of sight. From the front the forest stands right behind the meadow, as in the painting. From above the skull sits on a hill.
+- The meadow is described under "A meadow of cut paper".
 
 The clouds' ring turns once in 25 minutes. A sun circles the sky once in 10 minutes and the scene's light follows it. Five birds circle behind the forest. A looped, filtered noise makes the wind, which a browser lets play only after a tap or click.
+
+### A meadow of cut paper
+
+codekiln asked for grass like layers of paper models: flowers that come out of the ground, soft dandelions, ornate cut shapes like laser-cut paper, a gentle wind, and a thicket that runs to the horizon and blurs.
+
+The painted meadow is bright plants on a dark green base. The pipeline removes the base by its color, which leaves the leaves, stems and flowers as an ornate cutout. Each stem that reaches the bottom of the image is a root. A root's number spreads along the cutout until it meets the next plant, so everything joined to a stem becomes one plant. A flower head is kept whole: where two plants meet inside one, the head goes to the plant that holds most of it. The painting gives ten plants.
+
+In the viewer each plant is a flat card that stands on its root. Near the skull the plants stand in crossed pairs, about seven hundred of them out to 1.9 skull lengths, and single plants thin out to 3.6 skull lengths. Plants right beside the skull are less than half size, so the teeth and jaw stay in view. Each card curls and leans by an amount taken from where it stands.
+
+Behind the thicket, the whole meadow is wrapped around the scene in rings: two rings of the cutout near the skull, then rings of the painted meadow, each larger than the one before, out to the cloud layer. The ground is flat under the skull and falls 0.11 for every unit beyond that, so from the front view the far rings show as a band under the forest.
+
+One shader draws all of it. The wind pushes each card's top by the square of its height, in gusts that travel across the meadow. Paper far from the skull is read from a blurrier copy of its picture and mixed toward the horizon's color. A pale rim on one side of every cut edge and a shaded rim on the other make the cards read as paper. Edges are softened by letting the picture's transparency thin each pixel's coverage, which needs no sorting. A card closer than about one unit to the camera thins out.
 
 ### A free camera
 
@@ -84,7 +95,8 @@ A thing that the skull hides from the camera cannot be selected or removed throu
 
 - The back of every model repeats the front's painting. → This suits candies, capsules, beads and butterflies. A thing with a distinct back needs a generative model.
 - The filled parts of the forest are soft, and the drifting clouds uncover them. → A generative fill would paint real foliage there.
-- The ground between the meadow ring and the forest is one flat color. → It is out of sight from the front view.
+- The thicket is about 1,700 cards drawn in ten batches. → It has not been timed on a phone.
+- The rule that cuts the meadow from its base assumes a dark green base. → Another painting may need another rule.
 - The layer rules assume a blue floating layer and a far layer of one hue range. → Another painting may need other rules.
 - A phone is untested. The gestures were checked with scripted mouse and touch events in a desktop browser.
 
