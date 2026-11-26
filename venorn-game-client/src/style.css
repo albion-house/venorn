@@ -154,8 +154,17 @@ label {
   cursor: pointer;
 }
 
-#strip button[aria-selected="true"] {
+#strip button[aria-selected="true"],
+#strip button[aria-pressed="true"] {
   border-color: var(--accent);
+}
+
+/* A strip with buttons after its variations, such as the pen's, shrinks a little to fit a phone's width. */
+#strip.fit button {
+  flex: 0 1 46px;
+  min-width: 38px;
+  height: auto;
+  aspect-ratio: 1;
 }
 
 /* The wheel that opens around a selected thing. The thing stays reachable in the middle. */

@@ -29,6 +29,8 @@ export interface Scene {
   cameraEnabled(on: boolean): void;
   /** Whether a pen is chosen, so a drag on the structure draws. */
   painting(): boolean;
+  /** Whether the pen is put aside so that a drag turns the camera, even on the structure. */
+  turning(): boolean;
   /** Stop or allow a one-finger drag turning the camera. Two fingers still zoom and pan. */
   cameraTurns(on: boolean): void;
   strokeBegin(hit: Hit): void;
@@ -75,10 +77,11 @@ export function watchGestures(scene: Scene): void {
     (event) => {
       pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
       if (pointers.size === 1 && event.button === 0 && scene.painting()) {
-        // With a pen chosen, a press on the structure starts a stroke. A press anywhere else moves the camera.
+        // With a pen chosen, a press on the structure starts a stroke. A press anywhere else moves the camera,
+        // and so does every press while the pen is put aside to turn the view.
         down = { x: event.clientX, y: event.clientY, button: event.button };
         moved = false;
-        const hit = scene.surfaceAt(event.clientX, event.clientY);
+        const hit = scene.turning() ? undefined : scene.surfaceAt(event.clientX, event.clientY);
         if (hit) {
           mode = "paint";
           scene.cameraTurns(false);

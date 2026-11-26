@@ -79,6 +79,7 @@ The dock along the bottom holds the five categories (butterflies, candies, pills
 | Clear the selection | Click the sky, or press Escape | Tap the sky |
 | Draw with the glitter pen | Press `6` or click the pen in the dock, pick an ink in the strip, and drag on the skull | Tap the pen in the dock, pick an ink, and drag on the skull |
 | Take back a stroke | Press `Z`, or click the arrow at the end of the strip | Tap the arrow at the end of the strip |
+| Turn the camera with the pen chosen | Click the circling arrows in the strip and drag. Click an ink to draw again | Tap the circling arrows in the strip and drag with one finger. Tap an ink to draw again |
 | Turn the camera | Drag anywhere but the selected thing | Drag with one finger |
 | Zoom | Scroll | Pinch |
 | Pan | Right-drag or Shift+drag | Drag with two fingers |

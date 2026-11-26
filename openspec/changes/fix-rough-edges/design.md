@@ -19,7 +19,9 @@
 
 ### A button in the strip turns the view
 
-With the pen chosen, the strip holds the inks, a button with circling arrows that turns the view, and the arrow that takes back a stroke. While the button is pressed, a press anywhere goes to the camera, so one finger turns it and two fingers zoom and pan. Choosing an ink, choosing the pen again or leaving the pen releases the button.
+With the pen chosen, the strip holds the inks, a button with circling arrows that turns the view, and the arrow that takes back a stroke. While the button is pressed, a press anywhere goes to the camera, so one finger turns it and two fingers zoom and pan. Choosing an ink, choosing the pen again or leaving the pen releases the button. While the button is pressed it is marked in place of the ink.
+
+The pen's strip now holds eight buttons, which at 46 pixels each do not fit a phone's width. A strip with buttons after its variations lets them shrink to as little as 38 pixels, so on a 360-pixel screen none is scrolled out of sight. The categories of things keep their size.
 
 Holding a finger still before dragging was the other way considered. The diorama's first version removed a thing when a finger was held on it, and `add-decoration-play` removed that because it was hard to discover and went off by accident while a thing was being dragged. A held finger at the start of a stroke would turn the camera by accident in the same way.
 

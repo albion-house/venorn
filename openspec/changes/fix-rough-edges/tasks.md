@@ -1,7 +1,7 @@
 ## 1. Turning the view with the pen
 
-- [ ] 1.1 Put a button that turns the view in the pen's strip, and let a press go to the camera while it is pressed. Verify: in a 375 by 812 touch window with the skull filling the screen, a one-finger drag across the skull turns the camera and lays no glitter.
-- [ ] 1.2 Release the button when an ink or the pen is chosen. Verify: after choosing an ink, the same drag lays a stroke and the camera stays still.
+- [x] 1.1 Put a button that turns the view in the pen's strip, and let a press go to the camera while it is pressed. Verify: in a 375 by 812 touch window with the skull filling the screen, a one-finger drag of 200 pixels across the skull with the button pressed turns the camera 89° and lays no glitter. Before the change, a drag of 160 pixels laid 19 dabs and turned it 0°. With a mouse at 1280 by 800, a drag of 160 pixels turns it 72°. At 375 pixels wide the strip's eight buttons run from 12 to 363 pixels, 39 pixels wide, and at 360 from 12 to 358.
+- [x] 1.2 Release the button when an ink or the pen is chosen. Verify: after choosing an ink, the same drag lays 17 dabs and the camera keeps its angle to a tenth of a degree, and with a mouse it lays 89 dabs. Choosing the pen again releases the button.
 - [ ] 1.3 Turn the view with one finger on a real phone. Verify: codekiln says it works.
 
 ## 2. Color

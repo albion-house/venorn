@@ -282,6 +282,16 @@ export function inkPicture(ink: Ink): string {
   );
 }
 
+/** A small picture of two arrows circling a point, for the button that turns the view. */
+export function turnPicture(): string {
+  const line = `fill="none" stroke="#f6efe0" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"`;
+  return picture(
+    `<circle cx="24" cy="24" r="4.5" fill="#f6efe0"/>` +
+      `<path d="M9 21a15 15 0 0 1 26-9" ${line}/><path d="M37 4v9h-9" ${line}/>` +
+      `<path d="M39 27a15 15 0 0 1-26 9" ${line}/><path d="M11 44v-9h9" ${line}/>`,
+  );
+}
+
 /** A small picture of an arrow turning back, for the undo button. */
 export function undoPicture(): string {
   return picture(
