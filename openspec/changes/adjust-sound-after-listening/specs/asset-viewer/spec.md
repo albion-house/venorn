@@ -21,7 +21,7 @@ When the asset set has a scene, the viewer SHALL wrap the floating and far layer
 
 ### Requirement: Living scene
 
-The floating layer SHALL drift slowly around the scene while its parts flow their own ways, so its shapes change. A sun SHALL circle the sky, and the light and the shadows SHALL follow it. Now and then a flock of birds SHALL cross a gap between the masses of the far layer, calling as it goes. A wind SHALL sound from the first tap, click or key press. Gusts SHALL come at uneven times and with uneven strength, each picking up and dying away, with lulls between them. The plants SHALL sway and the wind SHALL sound with the same gusts. A "Sound" control SHALL switch every sound off and on.
+The floating layer SHALL drift slowly around the scene while its parts flow their own ways, so its shapes change. A sun SHALL circle the sky, and the light and the shadows SHALL follow it. Now and then a flock of birds SHALL cross a gap between the masses of the far layer, calling as it goes. A wind SHALL sound from the first tap, click or key press, louder in the meadow's gusts. A "Sound" control SHALL switch every sound off and on.
 
 #### Scenario: Clouds drift
 
@@ -54,18 +54,27 @@ The floating layer SHALL drift slowly around the scene while its parts flow thei
 - **WHEN** a person first taps or clicks the page
 - **THEN** the wind starts, and it rises and falls with the gusts that move the plants
 
-#### Scenario: Gusts come and go
-
-- **WHEN** a few minutes pass
-- **THEN** several gusts pick up and die away, some stronger than others and at uneven times
-- **AND** between them are spells when the wind is low and the plants barely move
-
 #### Scenario: Sound is switched off
 
 - **WHEN** a person unticks "Sound"
 - **THEN** the wind, the clouds, the bird calls and the pin sounds go quiet
 
 ## ADDED Requirements
+
+### Requirement: Gusts of wind
+
+Gusts SHALL come at uneven times and with uneven strength, each picking up and dying away, with lulls between them. The plants SHALL sway and the wind SHALL sound with the same gusts. In a gust the wind SHALL whistle higher and pass from one side to the other.
+
+#### Scenario: Gusts come and go
+
+- **WHEN** a few minutes pass
+- **THEN** several gusts pick up and die away, some stronger than others and at uneven times
+- **AND** between them are spells when the wind is low and the plants barely move
+
+#### Scenario: Gust picks up
+
+- **WHEN** a gust picks up
+- **THEN** the wind's whistle rises in pitch as the plants bend further
 
 ### Requirement: Sound carries on in a background tab
 

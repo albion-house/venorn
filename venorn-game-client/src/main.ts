@@ -78,7 +78,8 @@ const precise = window.matchMedia("(pointer: fine)").matches;
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+// three.js no longer has soft shadow maps and uses these in their place.
+renderer.shadowMap.type = THREE.PCFShadowMap;
 const scene = new THREE.Scene();
 scene.add(new THREE.HemisphereLight(0xffffff, 0xc9b79a, 1.3));
 
