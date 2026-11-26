@@ -24,6 +24,12 @@ export interface Spot {
   normal: THREE.Vector3;
 }
 
+/** A stroke as it was drawn: its ink, and each spot the pen passed, with null where the pen lifted. */
+export interface Stroke {
+  ink: Ink;
+  spots: (Spot | null)[];
+}
+
 export interface Pen {
   group: THREE.Group;
   /** Start a stroke at a spot on the structure, with one of the inks. */
@@ -36,6 +42,10 @@ export interface Pen {
   /** Take back the last stroke. Says whether there was one. */
   undo(): boolean;
   clear(): void;
+  /** The strokes drawn so far, oldest first. */
+  strokes(): Stroke[];
+  /** Draw strokes again from the spots the pen passed, as when a saved skull is brought back. */
+  redraw(strokes: Stroke[]): void;
   update(seconds: number, light: THREE.Vector3): void;
   /** How many strokes and how many dabs are drawn, for a test to read. */
   count(): { strokes: number; dabs: number };
@@ -135,7 +145,8 @@ export function buildPen(structure: THREE.Mesh, structureSize: number): Pen {
 
   const raycaster = new THREE.Raycaster();
   raycaster.firstHitOnly = true;
-  const strokes: { from: number }[] = [];
+  // Each stroke's first dab, and what is needed to draw it again.
+  const strokes: (Stroke & { from: number })[] = [];
   let ink: Ink | undefined;
   let last: Spot | undefined;
   // How far the pen has travelled in this stroke, and how far since its last dab.
@@ -169,18 +180,22 @@ export function buildPen(structure: THREE.Mesh, structureSize: number): Pen {
     colors.needsUpdate = true;
   }
 
-  return {
+  const copy = (spot: Spot): Spot => ({ point: spot.point.clone(), normal: spot.normal.clone() });
+
+  const pen: Pen = {
     group,
     begin(spot: Spot, chosen: Ink): void {
       ink = chosen;
-      strokes.push({ from: dabs.count });
+      strokes.push({ from: dabs.count, ink: chosen, spots: [copy(spot)] });
       travelled = 0;
       owed = 0;
-      last = { point: spot.point.clone(), normal: spot.normal.clone() };
+      last = copy(spot);
       dab(spot.point, spot.normal);
     },
     draw(spot: Spot): void {
       if (!ink) return;
+      // A stroke taken back while it was drawn has no record left to add to.
+      strokes[strokes.length - 1]?.spots.push(copy(spot));
       if (!last || last.point.distanceTo(spot.point) > GAP * structureSize) {
         // The pen comes down again after a lift or a jump across a gap.
         last = { point: spot.point.clone(), normal: spot.normal.clone() };
@@ -207,6 +222,8 @@ export function buildPen(structure: THREE.Mesh, structureSize: number): Pen {
       last.normal.copy(spot.normal);
     },
     lift(): void {
+      const spots = strokes[strokes.length - 1]?.spots;
+      if (ink && spots && spots[spots.length - 1] !== null) spots.push(null);
       last = undefined;
     },
     end(): void {
@@ -223,12 +240,26 @@ export function buildPen(structure: THREE.Mesh, structureSize: number): Pen {
       strokes.length = 0;
       dabs.count = 0;
     },
+    strokes: () => strokes.map(({ ink, spots }) => ({ ink, spots })),
+    redraw(drawn: Stroke[]): void {
+      for (const { ink: chosen, spots } of drawn) {
+        const start = spots.findIndex((spot) => spot !== null);
+        if (start < 0) continue;
+        pen.begin(spots[start]!, chosen);
+        for (const spot of spots.slice(start + 1)) {
+          if (spot) pen.draw(spot);
+          else pen.lift();
+        }
+        pen.end();
+      }
+    },
     update(seconds: number, light: THREE.Vector3): void {
       uniforms.uTime.value = seconds;
       uniforms.uLight.value.copy(light).normalize();
     },
     count: () => ({ strokes: strokes.length, dabs: dabs.count }),
   };
+  return pen;
 }
 
 const RAINBOW_STOPS = ["#ff5a7a", "#ffd166", "#5ee08a", "#5ab8ff", "#b98bff"];
