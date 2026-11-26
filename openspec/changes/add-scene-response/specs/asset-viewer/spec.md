@@ -72,3 +72,52 @@ When the asset set names a hollow on the structure, a rabbit SHALL come out of i
 
 - **WHEN** a thing is placed while a rabbit is bounding away
 - **THEN** no second rabbit appears
+
+### Requirement: Music from the placed things
+
+Each thing on the structure SHALL play a note of its own that comes around on a loop of its own length. A thing higher on the structure SHALL play a higher note, and each category SHALL have its own voice. A thing placed alone SHALL sound within a second. The music's level SHALL rise from silence with the number of things placed, with a low drone under the notes, and the "Sound" switch SHALL silence it.
+
+#### Scenario: Nothing is placed
+
+- **WHEN** nothing is on the skull
+- **THEN** no music plays
+
+#### Scenario: First thing is placed
+
+- **WHEN** a person places the first thing
+- **THEN** its note sounds quietly within a second
+- **AND** the same note sounds again some seconds later
+
+#### Scenario: Many things are placed at once
+
+- **WHEN** a person presses "Arrange as painted"
+- **THEN** the things' first notes are spread out over their loops and do not all sound together
+
+#### Scenario: Thing on the horn
+
+- **WHEN** a thing near the tip of the horn and a thing on the jaw both sound
+- **THEN** the thing on the horn plays the higher note
+
+### Requirement: Things sound from where they sit
+
+A thing's note SHALL come from the thing's place in the scene: louder with the camera near the thing, quieter with it far, and to the left or right as the thing is.
+
+#### Scenario: Camera moves close to a thing
+
+- **WHEN** a thing sounds with the camera two world units from it, and again with the camera nine units from it
+- **THEN** the first note is several times louder than the second
+
+### Requirement: Things show the music
+
+While a thing's note rings, the thing SHALL swell and glow, most at the start of the note. A line SHALL draw itself from the thing that sounded before to the thing that sounds now, and then fade.
+
+#### Scenario: Two things sound in turn
+
+- **WHEN** one thing sounds and then another
+- **THEN** the second thing swells and glows
+- **AND** a line arcs from the first thing to the second and fades over a few seconds
+
+#### Scenario: Sound is switched off
+
+- **WHEN** the "Sound" switch is off
+- **THEN** the things still swell and the lines still draw

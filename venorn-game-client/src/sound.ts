@@ -24,6 +24,11 @@ function output(): { context: AudioContext; master: GainNode } {
   return { context, master };
 }
 
+/** The audio context and the output every sound goes through, once a tap, a click or a key press has started them. */
+export function bus(): { context: AudioContext; master: GainNode } | undefined {
+  return context && master ? { context, master } : undefined;
+}
+
 /** Switch every sound on or off. */
 export function setSound(on: boolean): void {
   wanted = on;
