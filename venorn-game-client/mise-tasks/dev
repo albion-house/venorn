@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+#MISE description="Serve the client with live reload"
+#MISE depends=[":install"]
+#MISE dir="{{config_root}}"
+#USAGE flag "--port <port>" help="Port to serve on" default="5183"
+set -euo pipefail
+exec vite --port "${usage_port}"

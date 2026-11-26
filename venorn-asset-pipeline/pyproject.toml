@@ -1,0 +1,42 @@
+[project]
+name = "venorn-assets"
+version = "0.1.0"
+description = "Turns a source image into 3D models with adjustment criteria for venorn"
+requires-python = ">=3.13,<3.14"
+dependencies = [
+    "jsonschema",
+    "numpy",
+    "pillow",
+    "scipy",
+    "torch",
+    "torchvision",
+    "transformers",
+    "trimesh",
+]
+
+[dependency-groups]
+dev = ["pytest"]
+
+[project.scripts]
+venorn-assets = "venorn_assets.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/venorn_assets"]
+
+[tool.uv]
+# Hold back packages published in the last five days, matching the release-age
+# window mise applies to tools in the root mise.toml.
+exclude-newer = "5 days"
+
+[tool.ruff]
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

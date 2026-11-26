@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+#MISE description="Lint and test the pipeline"
+#MISE depends=[":lint", ":test"]
+set -euo pipefail

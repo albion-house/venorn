@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+#MISE description="Run the pipeline's unit tests"
+#MISE depends=[":install"]
+#MISE dir="{{config_root}}"
+set -euo pipefail
+exec uv run pytest tests/unit "$@"

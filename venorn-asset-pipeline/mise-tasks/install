@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+#MISE description="Install the pipeline's Python dependencies"
+#MISE dir="{{config_root}}"
+set -euo pipefail
+uv sync

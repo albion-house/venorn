@@ -29,9 +29,14 @@ List every task with `mise tasks --all`.
 # Turn the source image into models and adjustment criteria
 mise //venorn-asset-pipeline:build
 
-# Look at the models in a browser
+# Look at the models in a browser and pin them to the skull
 mise //venorn-game-client:dev
+
+# Lint, test and type-check every project, and validate the OpenSpec changes
+mise //:check
 ```
+
+The pipeline downloads about 3 GB of model weights from Hugging Face the first time it runs.
 
 ## Working on venorn
 

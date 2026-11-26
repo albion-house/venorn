@@ -1,0 +1,14 @@
+{
+  "name": "@albion-house/venorn-game-client",
+  "version": "0.1.0",
+  "description": "the venorn web client",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "three": "latest",
+    "three-mesh-bvh": "latest"
+  },
+  "devDependencies": {
+    "@types/three": "latest"
+  }
+}
