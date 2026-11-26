@@ -46,10 +46,10 @@ Its mean loudness is what the old wind's was, so the balance against the music h
 
 ### Banks of clouds
 
-The banks are cut from the floating layer's picture in the browser. The picture's opaque parts are labelled at a quarter of its size, and the pieces that do not touch an edge of the picture are kept. Each piece is cut out with its own mask, so no part of its neighbors shows. A piece is drawn as a sprite, which always faces the camera, like the rabbit.
+The banks are cut from the floating layer's picture in the browser. The picture's opaque parts are labelled at a quarter of its size, and the pieces that do not touch an edge of the picture and cover at least 0.2% of it are kept. Each piece is cut out with its own mask, so no part of its neighbors shows. The painting's cloud layer gives 11 pieces. The banks take them in turn, and every second piece is mirrored. A piece is drawn as a sprite, which always faces the camera, like the rabbit.
 
-- The near bank: 8 pieces on a circle 4 world units from the middle of the skull, at the height of the skull's upper half and above it. It goes once around the scene in 10 minutes. From the front view the camera stands 9 units away, so pieces on the near side of the circle are in front of the skull and pieces on the far side are behind it.
-- The middle bank: 10 larger pieces on a circle 14 units from the middle, higher up. It goes the other way, once around in 20 minutes.
+- The near bank: 8 pieces, 0.9 to 1.4 world units wide, on a circle 4 units from the middle of the skull and 0.2 to 1.1 units up. From the front view they pass over the top of the skull and in front of the horn. The bank goes once around the scene in 10 minutes. The camera stands 9 units from the middle in the front view, so pieces on the near side of the circle are in front of the skull and pieces on the far side are behind it.
+- The middle bank: 10 pieces, 2.5 to 4 units wide, on a circle 14 units from the middle and 2 to 5 units up. It goes the other way, once around in 20 minutes.
 - The far layer stays where it is, 26 units away.
 
 A piece fades as the camera comes within 1.5 units of it, as the plants thin out. The banks are not rings, so how far the camera can pull back stays the same.
@@ -62,7 +62,7 @@ Each layer has its own kind of sound, all on notes of the music's scale, D major
 - The middle bank: a soft chord of sine tones, one note for each piece, heard from where the piece is. Each tone swells and fades on its own slow loop.
 - The near bank: a high, airy whistle for each piece, noise through a narrow band on a high note, heard from where the piece is. As the bank turns, a whistle passes from one side to the other, and it is louder with the camera near.
 
-The cloud sounds start with the wind. From the front view each is quieter than a thing's note.
+The cloud sounds start with the wind. From the front view, each layer's loudest second is less than a third as loud as the loudest second of the quietest voice's note, and the near bank's whistles are the quietest of the three until the camera comes close.
 
 ## Risks / Trade-offs
 

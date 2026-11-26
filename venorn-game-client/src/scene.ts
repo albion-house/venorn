@@ -1,7 +1,8 @@
 // The scene around the structure: a sky dome, the far and floating layers
-// wrapped around the scene, a sun and birds. meadow.ts builds the ground.
+// wrapped around the scene, banks of clouds, a sun and birds. meadow.ts builds the ground.
 
 import * as THREE from "three";
+import { buildClouds, type Clouds } from "./clouds";
 import type { Layer, SceneLayers } from "./types";
 
 export interface Surroundings {
@@ -10,6 +11,8 @@ export interface Surroundings {
   /** How near and how far the layers wrapped around the scene stand from the middle. */
   innerRadius: number;
   outerRadius: number;
+  /** The banks of clouds cut from the floating layer, if there is one. */
+  clouds?: Clouds;
   update(seconds: number, camera: THREE.Camera): void;
   /** The direction of the gap in the far layer nearest to where the camera looks, as an angle from the front. */
   gapNear(camera: THREE.Camera): number | undefined;
@@ -279,6 +282,7 @@ export async function buildSurroundings(
   const loader = new THREE.TextureLoader();
   const time = { value: 0 };
   let drifting: THREE.Mesh | undefined;
+  let clouds: Clouds | undefined;
   let innerRadius = Infinity;
   let outerRadius = 0;
   let gaps: Gap[] = [];
@@ -297,6 +301,11 @@ export async function buildSurroundings(
     if (layer.motion === "drift") {
       drifting = ring.mesh;
       slither(ring, time);
+    }
+    if (layer.role === "floating" && !clouds) {
+      // The banks are not rings, so they leave the camera's reach as it is.
+      clouds = buildClouds(texture.image as HTMLImageElement);
+      group.add(clouds.group);
     }
     if (layer.role === "far") gaps = findGaps(layer, ring, structureSize);
   }
@@ -394,6 +403,7 @@ export async function buildSurroundings(
     disc.position.copy(direction).multiplyScalar(380);
 
     if (drifting) drifting.rotation.y = (seconds / DRIFT) * TURN;
+    clouds?.update(seconds, camera);
     fly(seconds, camera);
   }
 
@@ -402,6 +412,7 @@ export async function buildSurroundings(
     sun,
     innerRadius,
     outerRadius,
+    clouds,
     update,
     gapNear: (camera) => (gaps.length > 0 ? nearestGap(camera).angle : undefined),
     flockBy: (seconds) => {

@@ -3,6 +3,7 @@ import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { MeshBVH, acceleratedRaycast } from "three-mesh-bvh";
 import { watchGestures, type Hit } from "./gestures";
+import { buildCloudSound, type CloudSound } from "./clouds";
 import { buildLinks, type Links } from "./links";
 import { createMusic, type Music } from "./music";
 import { applySettings, createPlaced, defaultSettings, settingsWithin, swell, throb, type Placed } from "./placement";
@@ -102,6 +103,7 @@ let surroundings: Surroundings | undefined;
 let meadow: Meadow | undefined;
 let surprises: Surprises | undefined;
 let music: Music | undefined;
+let cloudSound: CloudSound | undefined;
 let pen: Pen | undefined;
 // The id of the category that holds the pen's inks in place of models.
 const PEN = "pen";
@@ -927,6 +929,13 @@ async function start(): Promise<void> {
   window.setInterval(() => {
     music?.schedule();
     scheduleWind();
+    // The clouds' sounds start with the wind.
+    const audio = bus();
+    const banks = surroundings?.clouds?.banks ?? [];
+    if (audio && !cloudSound && banks.length > 0) {
+      cloudSound = buildCloudSound(audio.context, audio.master, banks, () => performance.now() / 1000);
+    }
+    cloudSound?.schedule();
   }, SOUND_TICK);
 
   // Lets a test or the browser console drive the page. A browser stops drawing a page
@@ -952,6 +961,7 @@ async function start(): Promise<void> {
         firstRabbitDue,
       }),
       surprises,
+      clouds: surroundings?.clouds,
       links,
       pen,
       sendRabbit,

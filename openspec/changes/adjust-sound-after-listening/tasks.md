@@ -12,10 +12,10 @@
 
 ## 3. Clouds at three depths
 
-- [ ] 3.1 Cut pieces from the floating layer's picture in the browser. Verify: the number of pieces cut, and a picture of them.
-- [ ] 3.2 Stand a near bank and a middle bank of pieces around the scene and turn them slowly. Verify: from the front view a picture read from the canvas shows pieces in front of the skull and behind it, and the share of the skull they cover.
-- [ ] 3.3 Fade a piece as the camera comes close. Verify: a piece's opacity with the camera on it and 1.5 units from it.
-- [ ] 3.4 Make a sound for each layer of clouds. Verify: rendered with an OfflineAudioContext, each layer's loudness from the front view is below a thing's note, the layers differ in pitch, and a near piece's whistle is louder with the camera near it.
+- [x] 3.1 Cut pieces from the floating layer's picture in the browser. Verify: the number of pieces cut, and a picture of them. The painting's cloud layer gives 11 pieces, from 692 by 276 pixels down to 208 by 48. A sheet of them shows each cloud whole, with no part of a neighbor.
+- [x] 3.2 Stand a near bank and a middle bank of pieces around the scene and turn them slowly. Verify: from the front view a picture read from the canvas shows pieces in front of the skull and behind it, and the share of the skull they cover. At four moments two minutes apart, 3 or 4 of the near bank's 8 pieces are nearer the camera than the middle of the skull and the rest are farther. In pictures read from the canvas the near bank takes 2.1% to 4.3% of the view and the middle bank 0.7% to 1.9%. The near bank covers 0% to 1.4% of the skull, at the base of the horn. At the first moment a piece 5 units from the camera is drawn over 1,929 of the skull's pixels, and a piece 13 units away is hidden where 327 of its pixels would fall on the skull. At the last moment a piece 5.1 units away is drawn over 1,147 of the skull's pixels, and one 12.9 units away is hidden where 2,271 would fall.
+- [x] 3.3 Fade a piece as the camera comes close. Verify: a piece's opacity with the camera on it and 1.5 units from it. A near piece's opacity is 0 with the camera 0.2 units from it, 0.5 at 0.9 units, and 1 at 1.5 and 3 units.
+- [x] 3.4 Make a sound for each layer of clouds. Verify: rendered with an OfflineAudioContext, each layer's loudness from the front view is below a thing's note, the layers differ in pitch, and a near piece's whistle is louder with the camera near it. Over a minute from the front view, the loudest second of the far layer's hush is 0.009, of the middle bank's chord 0.009, and of the near bank's whistles 0.006. A thing's note at full level has a loudest second of 0.032 for the mallet up to 0.069 for the pad. The spectral centroids are 240 Hz, 505 Hz and 1570 Hz. One whistle has a loudness of 0.0048 from the front view and 0.018 with the camera a unit from its piece.
 
 ## 4. Checks and listening
 
