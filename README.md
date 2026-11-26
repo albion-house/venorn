@@ -45,14 +45,26 @@ The `phone` task prints the addresses to open. It serves the built site, so run 
 
 ## In the viewer
 
-| To | With a mouse | With touch |
+The dock along the bottom holds the five categories: butterflies, candies, pills, jewels and flowers. The strip above it holds the variations of the chosen category. A placed thing is selected, and a dashed ring marks it.
+
+| To | With a mouse and keys | With touch |
 | --- | --- | --- |
-| Pin a thing | Choose it in the tray, then click the skull | Choose it in the tray, then tap the skull |
-| Adjust a thing | Click it, then use the panel | Tap it, then use the panel |
-| Remove a thing | Right-click it | Press and hold it |
-| Turn the camera | Drag | Drag with one finger |
+| Choose a category | Click it in the dock, or press `1` to `5` | Tap it in the dock |
+| Choose a variation | Click it in the strip, or press the left or right arrow | Tap it in the strip |
+| Place a thing | Click the skull | Tap the skull |
+| Select a thing and open its wheel | Click it | Tap it |
+| Move the selected thing | Drag it | Drag it |
+| Resize the selected thing | Scroll over it, or press the up or down arrow | Pinch it |
+| Turn the selected thing | Shift+scroll over it, or press `[` or `]` | Twist it with two fingers |
+| Change the selected thing's kind or variation | Choose a category or a variation, or press Kind or Variation on the wheel | The same |
+| Change its color, lift, tilt, depth, wrap, fold or bend | Press Design on the wheel | The same |
+| Remove a thing | Right-click it, press Delete, or press Remove on the wheel | Press Remove on the wheel |
+| Clear the selection | Click the sky, or press Escape | Tap the sky |
+| Turn the camera | Drag anywhere but the selected thing | Drag with one finger |
 | Zoom | Scroll | Pinch |
-| Pan | Right-drag, shift-drag or the arrow keys | Drag with two fingers |
+| Pan | Right-drag or Shift+drag | Drag with two fingers |
+
+The button in the top left corner opens the menu: Front view, Rear view, Arrange as painted, Clear, Painted skull and Sound.
 
 ## Working on venorn
 

@@ -128,18 +128,4 @@ codekiln asked for access on 2026-11-26. Meta reviews each request by hand, and 
 
 ## Open Questions
 
-### 2 - Where should generated models be stored?
-
-> Context from the drafting agent, for question 2.
->
-> Git ignores the exported asset sets today, so a clone runs the pipeline to get them. One export of the painting is now 16 MB. GitHub Pages can only serve files that are in the deployed site, so publishing needs the models in git, in git LFS, or copied in by the deploy workflow from storage outside the repository.
-
-<ANSWER_HERE>
-
-### 3 - Should the game stay on three.js used directly?
-
-> Context from the drafting agent, for question 3.
->
-> The viewer uses three.js with no framework. React Three Fiber would fit a React interface, and Babylon.js is the main alternative engine. The models are standard GLB files and load in any of them.
-
-<ANSWER_HERE>
+Questions 2 (where generated models are stored) and 3 (whether the game stays on three.js used directly) are carried into the `add-decoration-play` change, unanswered.

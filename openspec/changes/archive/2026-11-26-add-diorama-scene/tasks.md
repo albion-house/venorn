@@ -36,10 +36,8 @@
 - [x] 6.2 Flow the cloud picture so the clouds slither. Verify: with the ring's drift cancelled, 10.6% of the sky's pixels differ between two moments.
 - [x] 6.3 Record the forest's top edge in the manifest and fly a flock through its dip now and then, with calls. Verify: a unit test covers the top edge, the birds show only in the gap in a picture read from the canvas, one crossing makes four calls, and three flocks cross in two minutes.
 - [x] 6.4 Rebuild the wind from three bands of noise that follow the meadow's gusts, start it with the first tap, and put every sound behind one "Sound" switch. Verify: the switch is on by default and toggles, and the page raises no errors.
-- [ ] 6.5 Listen to the wind and the bird calls and adjust them. Verify: codekiln says they sound right.
+- [x] 6.5 Listen to the wind and the bird calls and adjust them. Verify: codekiln says they sound right. codekiln listened on 2026-11-26 and said they are good enough for now.
 
 ## 7. Carried over from the first change
 
-- [ ] 7.1 Try the viewer on a phone: pin, adjust, remove, turn, zoom and pan by touch. Verify: each works on a real phone over the local network, with the skull visible while adjusting.
-- [ ] 7.2 Look through `catalog/overlay.png`, `isolated/sheet.png`, `layers/check.png` and `layers/plants.png` with codekiln, and note which kinds, exemplars and layer rules to change.
-- [ ] 7.3 Answer the open questions in `design.md`.
+The phone test, the review of the check pictures and the open questions are carried into the `add-decoration-play` change.

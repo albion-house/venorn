@@ -60,13 +60,17 @@
     },
     "adjust": {
       "type": "object",
-      "required": ["scale", "spin", "tilt", "depth", "conform", "bend", "mirror"],
+      "required": ["scale", "spin", "tilt", "depth", "hue", "conform", "bend", "mirror"],
       "additionalProperties": false,
       "properties": {
         "scale": { "$ref": "#/$defs/range", "description": "Multiplier on the natural size." },
         "spin": { "$ref": "#/$defs/range", "description": "Rotation about the surface normal." },
         "tilt": { "$ref": "#/$defs/range", "description": "Lean away from the surface normal." },
         "depth": { "$ref": "#/$defs/range", "description": "Multiplier on the model's thickness. A small value presses the model nearly flat." },
+        "hue": {
+          "$ref": "#/$defs/range",
+          "description": "How far the model's colors are turned around the color wheel."
+        },
         "fold": {
           "$ref": "#/$defs/range",
           "description": "How far both ends of the model's long axis lift off the surface, as a pinned butterfly holds its wings."

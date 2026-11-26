@@ -2,11 +2,14 @@ import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { MeshBVH, acceleratedRaycast } from "three-mesh-bvh";
-import { applySettings, createPlaced, throb, type Placed } from "./placement";
+import { watchGestures, type Hit } from "./gestures";
+import { applySettings, createPlaced, defaultSettings, throb, type Placed } from "./placement";
 import { buildMeadow, gustAt, type Meadow } from "./meadow";
 import { buildSurroundings, type Surroundings } from "./scene";
 import { playBirdCall, playPin, playRemove, setGust, setSound, startWind } from "./sound";
 import type { Criteria, Manifest, Range, Settings } from "./types";
+import * as ui from "./ui";
+import { say } from "./ui";
 
 const ASSET_SET = "veneration-ornamentation";
 const ASSETS = `${import.meta.env.BASE_URL}assets/${ASSET_SET}/`;
@@ -18,8 +21,13 @@ const VIEW_DISTANCE = 9;
 const BELOW_LEVEL = THREE.MathUtils.degToRad(6);
 // How far the point the camera looks at may be moved from the middle of the structure.
 const PAN_REACH = STRUCTURE_SIZE * 0.8;
-const HOLD_TO_REMOVE_MS = 550;
-const TAP_SLOP = 6;
+// One press of an arrow key resizes a thing by this factor, and one press of a bracket turns it this far.
+const KEY_RESIZE = 1.08;
+const KEY_TURN = 15;
+// The ring around a selected thing is at least this many pixels in radius.
+const MIN_RING = 16;
+// A tap this many pixels from the middle of a thing still counts as a tap on it.
+const NEAR_MISS = 14;
 
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
 
@@ -30,9 +38,8 @@ interface Loaded {
 }
 
 const canvas = document.querySelector<HTMLCanvasElement>("#scene")!;
-const tray = document.querySelector<HTMLElement>("#tray")!;
-const adjustPanel = document.querySelector<HTMLElement>("#adjust")!;
-const status = document.querySelector<HTMLElement>("#status")!;
+// A mouse or trackpad, as against a finger.
+const precise = window.matchMedia("(pointer: fine)").matches;
 
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -49,7 +56,6 @@ controls.zoomToCursor = true;
 controls.minDistance = STRUCTURE_SIZE * 0.12;
 controls.minPolarAngle = 0.05;
 controls.maxPolarAngle = Math.PI / 2 + BELOW_LEVEL;
-controls.listenToKeyEvents(window);
 
 const raycaster = new THREE.Raycaster();
 raycaster.firstHitOnly = true;
@@ -62,10 +68,22 @@ let surroundings: Surroundings | undefined;
 let meadow: Meadow | undefined;
 let bareTexture: THREE.Texture | null = null;
 let paintedTexture: THREE.Texture | undefined;
-let chosen: string | undefined;
 // Where across the view each bird call came from, kept so a test can count them.
 const birdCalls: number[] = [];
+
+// The five groups the player chooses from, the group now shown, and the variation chosen in each.
+let categories: ui.Category[] = [];
+const homes = new Map<string, { category: number; variation: number }>();
+let category = 0;
+const variation: number[] = [];
 let selected: Placed | undefined;
+let wheelOpen = false;
+let designOpen = false;
+// A drag, pinch or twist on a thing is under way, so the wheel stays out of the way.
+let shaping = false;
+// Things whose shape is recomputed before the next frame is drawn.
+const stale = new Set<Placed>();
+let onScreen: ui.OnScreen | undefined;
 
 async function loadMesh(file: string): Promise<THREE.Mesh> {
   const gltf = await loader.loadAsync(ASSETS + file);
@@ -102,34 +120,39 @@ function frontView(): void {
   lookFrom(1);
 }
 
-function say(message: string): void {
-  status.textContent = message;
+/** The model the next tap on the structure places. */
+function currentId(): string {
+  return categories[category].choices[variation[category]].id;
 }
 
-function choose(id: string): void {
-  chosen = id;
-  for (const button of tray.querySelectorAll("button")) {
-    button.setAttribute("aria-pressed", String(button.dataset.id === id));
-  }
-  say(`Tap the skull to pin ${id}`);
+/** Show a category in the dock and its variations in the strip. */
+function show(index: number): void {
+  category = index;
+  ui.showCategory(categories, category, variation[category], chooseVariation);
 }
 
-function buildTray(): void {
-  for (const kind of manifest.kinds) {
-    for (const entry of kind.models) {
-      const button = document.createElement("button");
-      button.type = "button";
-      button.dataset.id = entry.id;
-      button.title = entry.id;
-      button.setAttribute("aria-pressed", "false");
-      const image = document.createElement("img");
-      image.src = ASSETS + entry.preview;
-      image.alt = entry.id;
-      button.append(image);
-      button.addEventListener("click", () => choose(entry.id));
-      tray.append(button);
-    }
-  }
+/** Choose a category. A selected thing turns into that category's current variation. */
+function chooseCategory(index: number): void {
+  if (!categories[index]) return;
+  show(index);
+  if (selected) swap(selected, currentId());
+  else say(`${categories[index].name}: ${precise ? "click" : "tap"} the skull to place one`);
+}
+
+/** Choose a variation of the category shown. A selected thing turns into it. */
+function chooseVariation(index: number): void {
+  const count = categories[category].choices.length;
+  variation[category] = ((index % count) + count) % count;
+  ui.showVariation(categories, category, variation[category]);
+  if (selected) swap(selected, currentId());
+}
+
+function stepVariation(by: number): void {
+  chooseVariation(variation[category] + by);
+}
+
+function clamp(value: number, range: Range): number {
+  return Math.min(range.max, Math.max(range.min, value));
 }
 
 function pin(id: string, point: THREE.Vector3, normal: THREE.Vector3, settings?: Partial<Settings>): Placed {
@@ -142,9 +165,15 @@ function pin(id: string, point: THREE.Vector3, normal: THREE.Vector3, settings?:
   return thing;
 }
 
-function unpin(thing: Placed): void {
+function discard(thing: Placed): void {
   scene.remove(thing.group);
   thing.mesh.geometry.dispose();
+  (thing.mesh.material as THREE.Material).dispose();
+  stale.delete(thing);
+}
+
+function unpin(thing: Placed): void {
+  discard(thing);
   placed.splice(
     placed.findIndex((entry) => entry.thing === thing),
     1,
@@ -152,13 +181,90 @@ function unpin(thing: Placed): void {
   if (selected === thing) select(undefined);
 }
 
-function clamp(value: number, range: Range): number {
-  return Math.min(range.max, Math.max(range.min, value));
+/** Turn a placed thing into another model, where it is. */
+function swap(thing: Placed, id: string): void {
+  const entry = placed.find((candidate) => candidate.thing === thing);
+  if (!entry || thing.criteria.id === id) return;
+  const { criteria, mesh } = models.get(id)!;
+  const next = createPlaced(criteria, mesh, thing.point, thing.normal, STRUCTURE_SIZE);
+  // The new thing keeps the old one's size, turn and color as far as its own criteria allow.
+  next.settings.scale = clamp(thing.settings.scale, criteria.adjust.scale);
+  next.settings.spin = clamp(thing.settings.spin, criteria.adjust.spin);
+  next.settings.hue = clamp(thing.settings.hue, criteria.adjust.hue);
+  next.settings.mirror = thing.settings.mirror && criteria.adjust.mirror;
+  applySettings(next, structure, STRUCTURE_SIZE);
+  discard(thing);
+  scene.add(next.group);
+  entry.thing = next;
+  if (selected === thing) {
+    selected = next;
+    showDesign();
+  }
+}
+
+/** Select a thing, or nothing. The dock and strip follow the thing selected. */
+function select(thing: Placed | undefined, openWheel = false): void {
+  selected = thing;
+  wheelOpen = !!thing && openWheel;
+  if (!thing) designOpen = false;
+  showDesign();
+  if (!thing) return;
+  const home = homes.get(thing.criteria.id)!;
+  variation[home.category] = home.variation;
+  show(home.category);
+}
+
+/** Open the design bar on the selected thing, or close it. */
+function showDesign(): void {
+  const thing = designOpen ? selected : undefined;
+  ui.showDesign(thing, {
+    change: () => thing && stale.add(thing),
+    reset: () => {
+      if (!thing) return;
+      Object.assign(thing.settings, defaultSettings(thing.criteria));
+      reshape(thing);
+    },
+    close: () => {
+      designOpen = false;
+      showDesign();
+    },
+  });
+}
+
+/** Recompute a thing's shape before the next frame, and keep the design bar in step. */
+function reshape(thing: Placed): void {
+  stale.add(thing);
+  if (designOpen && thing === selected) ui.refreshDesign(thing);
+}
+
+function resizeThing(thing: Placed, factor: number): void {
+  thing.settings.scale = clamp(thing.settings.scale * factor, thing.criteria.adjust.scale);
+  reshape(thing);
+}
+
+function turnThing(thing: Placed, degrees: number): void {
+  const range = thing.criteria.adjust.spin;
+  const span = range.max - range.min;
+  let spin = thing.settings.spin + degrees;
+  // A range that covers the whole circle wraps around.
+  if (span >= 360) spin = range.min + ((((spin - range.min) % span) + span) % span);
+  thing.settings.spin = clamp(spin, range);
+  reshape(thing);
+}
+
+function takeOff(thing: Placed): void {
+  unpin(thing);
+  playRemove();
+  say("Removed");
+}
+
+function clear(): void {
+  while (placed.length > 0) unpin(placed[0].thing);
 }
 
 /** Put every thing where the painting has it, and its mirror image on the far side. */
 function arrangeAsPainted(): void {
-  while (placed.length > 0) unpin(placed[0].thing);
+  clear();
   const turn: Record<string, number> = {};
   const origin = new THREE.Vector3();
   const toward = new THREE.Vector3();
@@ -184,169 +290,107 @@ function arrangeAsPainted(): void {
   say(`Arranged ${placed.length} things as painted, on both sides`);
 }
 
-function slider(label: string, range: Range, value: number, onInput: (value: number) => void): HTMLLabelElement {
-  const row = document.createElement("label");
-  const input = document.createElement("input");
-  input.type = "range";
-  input.min = String(range.min);
-  input.max = String(range.max);
-  input.step = String((range.max - range.min) / 200);
-  input.value = String(value);
-  input.addEventListener("input", () => onInput(Number(input.value)));
-  row.append(label, input);
-  return row;
-}
+const seen = new THREE.Vector3();
+const sight = new THREE.Vector3();
 
-/** Show the adjustments the selected thing's criteria allow. */
-function select(thing: Placed | undefined): void {
-  selected = thing;
-  adjustPanel.replaceChildren();
-  adjustPanel.hidden = !thing;
-  if (!thing) return;
-
-  const { criteria, settings } = thing;
-  const change = (key: keyof Omit<Settings, "mirror">) => (value: number) => {
-    settings[key] = value;
-    applySettings(thing, structure, STRUCTURE_SIZE);
-  };
-  const heading = document.createElement("h2");
-  heading.textContent = `${criteria.id} (${criteria.role})`;
-  adjustPanel.append(heading);
-
-  const { adjust, attach } = criteria;
-  const ranges: [string, keyof Omit<Settings, "mirror">, Range][] = [
-    ["Size", "scale", adjust.scale],
-    ["Turn", "spin", adjust.spin],
-    ["Lift", "standoff", attach.standoff],
-    ["Tilt", "tilt", adjust.tilt],
-    ["Depth", "depth", adjust.depth],
-    ["Wrap", "conform", adjust.conform],
-  ];
-  if (adjust.fold) ranges.push(["Fold", "fold", adjust.fold]);
-  if (adjust.bend.enabled && adjust.bend.max) {
-    ranges.push(["Bend", "bend", { default: 0, min: -adjust.bend.max, max: adjust.bend.max }]);
-  }
-  for (const [label, key, range] of ranges) {
-    // A range with one value is fixed by the criteria, so it gets no slider.
-    if (range.max > range.min) adjustPanel.append(slider(label, range, settings[key], change(key)));
-  }
-
-  if (adjust.mirror) {
-    const row = document.createElement("label");
-    const box = document.createElement("input");
-    box.type = "checkbox";
-    box.checked = settings.mirror;
-    box.addEventListener("change", () => {
-      settings.mirror = box.checked;
-      applySettings(thing, structure, STRUCTURE_SIZE);
-    });
-    row.append("Mirror", box);
-    adjustPanel.append(row);
-  }
-
-  const remove = document.createElement("button");
-  remove.type = "button";
-  remove.textContent = "Remove";
-  remove.addEventListener("click", () => takeOff(thing));
-  adjustPanel.append(remove);
-}
-
-function takeOff(thing: Placed): void {
-  const id = thing.criteria.id;
-  unpin(thing);
-  playRemove();
-  say(`Removed ${id}`);
-}
-
-function aim(event: { clientX: number; clientY: number }): void {
+function aim(x: number, y: number): void {
   const bounds = canvas.getBoundingClientRect();
   raycaster.setFromCamera(
-    new THREE.Vector2(
-      ((event.clientX - bounds.left) / bounds.width) * 2 - 1,
-      -((event.clientY - bounds.top) / bounds.height) * 2 + 1,
-    ),
+    new THREE.Vector2(((x - bounds.left) / bounds.width) * 2 - 1, -((y - bounds.top) / bounds.height) * 2 + 1),
     camera,
   );
 }
 
-/** The pinned thing under the pointer, unless the structure is in front of it. */
-function thingUnder(event: { clientX: number; clientY: number }): Placed | undefined {
-  aim(event);
+/** Where a thing is on the screen, unless it is out of view or behind the structure. */
+function whereOnScreen(thing: Placed): ui.OnScreen | undefined {
+  const sphere = thing.mesh.geometry.boundingSphere;
+  if (!sphere) return undefined;
+  seen.copy(sphere.center).project(camera);
+  if (seen.z < -1 || seen.z > 1) return undefined;
+  const away = camera.position.distanceTo(sphere.center);
+  raycaster.set(camera.position, sight.copy(sphere.center).sub(camera.position).normalize());
+  const hit = raycaster.intersectObject(structure, false)[0];
+  if (hit && hit.distance < away - 0.05 * STRUCTURE_SIZE) return undefined;
+  const bounds = canvas.getBoundingClientRect();
+  const perUnit = bounds.height / 2 / (away * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)));
+  return {
+    x: bounds.left + ((seen.x + 1) / 2) * bounds.width,
+    y: bounds.top + ((1 - seen.y) / 2) * bounds.height,
+    radius: Math.max(MIN_RING, sphere.radius * perUnit),
+  };
+}
+
+/**
+ * The pinned thing at a point on the screen, unless the structure is in front of it.
+ * A point just beside a thing counts, so a small thing can be tapped with a finger.
+ */
+function thingAt(x: number, y: number): Placed | undefined {
+  aim(x, y);
   const onThing = raycaster.intersectObjects(
     placed.map((entry) => entry.thing.mesh),
     false,
   )[0];
-  if (!onThing) return undefined;
-  const onStructure = raycaster.intersectObject(structure, false)[0];
-  if (onStructure && onStructure.distance < onThing.distance - 0.02 * STRUCTURE_SIZE) return undefined;
-  return placed.find((entry) => entry.thing.mesh === onThing.object)!.thing;
+  if (onThing) {
+    const onStructure = raycaster.intersectObject(structure, false)[0];
+    if (!onStructure || onStructure.distance >= onThing.distance - 0.02 * STRUCTURE_SIZE) {
+      return placed.find((entry) => entry.thing.mesh === onThing.object)!.thing;
+    }
+  }
+  let nearest: Placed | undefined;
+  let nearestBy = NEAR_MISS;
+  for (const { thing } of placed) {
+    const at = whereOnScreen(thing);
+    if (!at) continue;
+    const by = Math.hypot(x - at.x, y - at.y);
+    if (by < nearestBy) {
+      nearest = thing;
+      nearestBy = by;
+    }
+  }
+  return nearest;
 }
 
-/** A tap selects the thing under it, or pins the chosen kind to the structure. */
-function tap(event: PointerEvent): void {
-  const thing = thingUnder(event);
-  if (thing) {
-    select(thing);
-    return;
-  }
+/** The spot on the structure at a point on the screen. */
+function surfaceAt(x: number, y: number): Hit | undefined {
+  aim(x, y);
   const hit = raycaster.intersectObject(structure, false)[0];
-  if (!hit?.face) {
-    select(undefined);
-    return;
-  }
-  if (!chosen) {
-    say("Choose a thing from the tray first");
-    return;
-  }
-  const normal = hit.face.normal.clone().transformDirection(structure.matrixWorld);
-  select(pin(chosen, hit.point, normal));
-  playPin();
-  say(`Pinned ${chosen}. Right-click it, or press and hold, to remove it`);
+  if (!hit?.face) return undefined;
+  return { point: hit.point, normal: hit.face.normal.clone().transformDirection(structure.matrixWorld) };
 }
 
-/** Tell taps, right-clicks and long presses apart from the drags that move the camera. */
-function watchPointer(): void {
-  let down: { x: number; y: number; button: number } | undefined;
-  let hold: number | undefined;
-  let held = false;
-  const moved = (event: PointerEvent): boolean =>
-    !down || Math.hypot(event.clientX - down.x, event.clientY - down.y) >= TAP_SLOP;
+function place(hit: Hit): void {
+  select(pin(currentId(), hit.point, hit.normal));
+  playPin();
+  say(
+    precise
+      ? "Drag it to move it, scroll to resize, Shift+scroll to turn. Click it for more"
+      : "Drag it to move it, pinch to resize, twist to turn. Tap it for more",
+  );
+}
 
-  canvas.addEventListener("contextmenu", (event) => event.preventDefault());
-  canvas.addEventListener("pointerdown", (event) => {
-    down = { x: event.clientX, y: event.clientY, button: event.button };
-    held = false;
-    window.clearTimeout(hold);
-    if (event.pointerType !== "mouse") {
-      // A finger held still on a pinned thing removes it.
-      hold = window.setTimeout(() => {
-        const thing = thingUnder(event);
-        if (!thing) return;
-        held = true;
-        navigator.vibrate?.(15);
-        takeOff(thing);
-      }, HOLD_TO_REMOVE_MS);
-    }
-  });
-  canvas.addEventListener("pointermove", (event) => {
-    if (moved(event)) window.clearTimeout(hold);
-  });
-  canvas.addEventListener("pointercancel", () => {
-    window.clearTimeout(hold);
-    down = undefined;
-  });
-  canvas.addEventListener("pointerup", (event) => {
-    window.clearTimeout(hold);
-    const still = !moved(event);
-    const button = down?.button;
-    down = undefined;
-    if (!still || held) return;
-    if (button === 2) {
-      const thing = thingUnder(event);
-      if (thing) takeOff(thing);
-    } else if (button === 0) {
-      tap(event);
-    }
+function watchKeys(): void {
+  window.addEventListener("keydown", (event) => {
+    if (event.metaKey || event.ctrlKey) return;
+    // A slider that has the keyboard keeps its arrow keys.
+    if (event.target instanceof HTMLInputElement && event.key.startsWith("Arrow")) return;
+    const digit = Number(event.key);
+    if (Number.isInteger(digit) && digit >= 1 && event.key.length === 1) chooseCategory(digit - 1);
+    else if (event.key === "ArrowRight") stepVariation(1);
+    else if (event.key === "ArrowLeft") stepVariation(-1);
+    else if (event.key === "Escape") {
+      if (ui.closeMenu()) return;
+      if (designOpen) {
+        designOpen = false;
+        showDesign();
+      } else select(undefined);
+    } else if (!selected) return;
+    else if (event.key === "ArrowUp") resizeThing(selected, KEY_RESIZE);
+    else if (event.key === "ArrowDown") resizeThing(selected, 1 / KEY_RESIZE);
+    else if (event.key === "[") turnThing(selected, KEY_TURN);
+    else if (event.key === "]") turnThing(selected, -KEY_TURN);
+    else if (event.key === "Delete" || event.key === "Backspace") takeOff(selected);
+    else return;
+    event.preventDefault();
   });
 }
 
@@ -375,6 +419,19 @@ async function start(): Promise<void> {
       }),
     ),
   );
+  categories = manifest.categories.map((group) => ({
+    id: group.id,
+    name: group.name,
+    choices: group.kinds.flatMap((id) =>
+      manifest.kinds
+        .find((kind) => kind.id === id)!
+        .models.map((entry) => ({ id: entry.id, preview: ASSETS + entry.preview })),
+    ),
+  }));
+  categories.forEach((group, index) => {
+    variation[index] = 0;
+    group.choices.forEach((choice, at) => homes.set(choice.id, { category: index, variation: at }));
+  });
 
   if (manifest.scene) {
     surroundings = await buildSurroundings(manifest.scene, ASSETS, STRUCTURE_SIZE, VIEW_DISTANCE, {
@@ -392,11 +449,47 @@ async function start(): Promise<void> {
     scene.background = new THREE.Color(0x6f93c9);
   }
 
-  buildTray();
-  watchPointer();
+  ui.buildDock(categories, chooseCategory);
+  show(0);
+  ui.watchMenu();
+  ui.onWheel((action) => {
+    if (!selected) return;
+    if (action === "kind") chooseCategory((category + 1) % categories.length);
+    else if (action === "variation") stepVariation(1);
+    else if (action === "remove") takeOff(selected);
+    else {
+      designOpen = !designOpen;
+      showDesign();
+    }
+  });
+  watchGestures({
+    canvas,
+    thingAt,
+    surfaceAt,
+    selected: () => selected,
+    selectedOnScreen: () => onScreen,
+    press: (thing) => select(thing, true),
+    deselect: () => select(undefined),
+    place,
+    move: (thing, hit) => {
+      thing.point.copy(hit.point);
+      thing.normal.copy(hit.normal);
+      stale.add(thing);
+    },
+    resize: resizeThing,
+    turn: turnThing,
+    remove: takeOff,
+    cameraEnabled: (on) => {
+      controls.enabled = on;
+    },
+    shaping: (on) => {
+      shaping = on;
+    },
+  });
+  watchKeys();
   document.querySelector("#arrange")!.addEventListener("click", arrangeAsPainted);
   document.querySelector("#clear")!.addEventListener("click", () => {
-    while (placed.length > 0) unpin(placed[0].thing);
+    clear();
     say("");
   });
   document.querySelector("#front")!.addEventListener("click", () => lookFrom(1));
@@ -420,11 +513,17 @@ async function start(): Promise<void> {
   resize();
   frontView();
   window.addEventListener("resize", resize);
-  say("Choose a thing from the tray, then tap the skull. Drag to look around");
+  say(
+    precise
+      ? "Keys 1 to 5 pick a kind, the arrow keys a variation. Click the skull to place one"
+      : "Pick a kind below, then tap the skull to place one. Drag to look around",
+  );
 
   const reach = new THREE.Vector3(PAN_REACH, PAN_REACH, PAN_REACH);
   const farthest = reach.clone().negate();
   const draw = (seconds: number): void => {
+    for (const thing of stale) applySettings(thing, structure, STRUCTURE_SIZE);
+    stale.clear();
     for (const { thing, pinnedAt } of placed) throb(thing, seconds, performance.now() / 1000 - pinnedAt);
     surroundings?.update(seconds, camera);
     meadow?.update(seconds);
@@ -432,6 +531,8 @@ async function start(): Promise<void> {
     controls.target.clamp(farthest, reach);
     controls.update();
     renderer.render(scene, camera);
+    onScreen = selected && whereOnScreen(selected);
+    ui.placeSelection(onScreen, wheelOpen && !shaping);
   };
   renderer.setAnimationLoop((milliseconds) => draw(milliseconds / 1000));
 
@@ -442,7 +543,10 @@ async function start(): Promise<void> {
       manifest,
       models,
       placed,
-      choose,
+      chooseCategory,
+      chooseVariation,
+      select,
+      state: () => ({ category, variation, selected, wheelOpen, designOpen, onScreen }),
       arrangeAsPainted,
       frontView,
       lookFrom,

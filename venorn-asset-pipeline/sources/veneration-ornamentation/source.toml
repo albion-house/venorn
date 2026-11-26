@@ -59,7 +59,7 @@ id = "butterfly"
 prompt = "butterfly"
 looks_like = "a butterfly"
 role = "pinned"
-exemplars = 2
+exemplars = 3
 thickness = 0.14
 
 # A pinned butterfly holds its wings up from the surface.
@@ -73,7 +73,7 @@ id = "candy"
 prompt = "candy"
 looks_like = "a wrapped candy with twisted wrapper ends"
 role = "pinned"
-exemplars = 3
+exemplars = 6
 thickness = 0.85
 
 [[kinds]]
@@ -81,7 +81,7 @@ id = "capsule"
 prompt = "pill"
 looks_like = "a two-colored medicine capsule"
 role = "pinned"
-exemplars = 2
+exemplars = 6
 thickness = 1.0
 
 [[kinds]]
@@ -89,7 +89,7 @@ id = "bead"
 prompt = "bead"
 looks_like = "a round bead on a pin"
 role = "pinned"
-exemplars = 2
+exemplars = 6
 thickness = 1.0
 
 [[kinds]]
@@ -97,7 +97,7 @@ id = "flower"
 prompt = "flower"
 looks_like = "a flower"
 role = "pinned"
-exemplars = 4
+exemplars = 6
 thickness = 0.5
 
 # A flower sits close to the surface and can be pressed flat onto it.
@@ -121,3 +121,31 @@ carries = ["flower"]
 role = "printed"
 exemplars = 7
 thickness = 0.5
+
+# The groups the player chooses from, in the order of the number keys 1 to 5.
+# Every kind belongs to one category.
+
+[[categories]]
+id = "butterflies"
+name = "Butterflies"
+kinds = ["butterfly"]
+
+[[categories]]
+id = "candies"
+name = "Candies"
+kinds = ["candy"]
+
+[[categories]]
+id = "pills"
+name = "Pills"
+kinds = ["capsule"]
+
+[[categories]]
+id = "jewels"
+name = "Jewels"
+kinds = ["bead"]
+
+[[categories]]
+id = "flowers"
+name = "Flowers"
+kinds = ["flower", "sprig"]

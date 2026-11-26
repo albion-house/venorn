@@ -16,6 +16,13 @@ def test_painting_source_names_its_structure_and_kinds():
     assert source.kind("butterfly").criteria["adjust"]["fold"]["default"] > 0
 
 
+def test_painting_groups_its_kinds_into_five_categories():
+    source = load_source("veneration-ornamentation")
+
+    assert [category.id for category in source.categories] == ["butterflies", "candies", "pills", "jewels", "flowers"]
+    assert source.categories[-1].kinds == ("flower", "sprig")
+
+
 def test_painted_kind_names_its_paint_and_what_it_carries():
     sprig = load_source("veneration-ornamentation").kind("sprig")
 
