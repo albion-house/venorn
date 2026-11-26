@@ -22,7 +22,7 @@
 
 Two ways were considered: keep the buttons off the thing, or let a second finger cancel a button press and go to the thing. A second finger only helps a pinch. A tap or a drag on a thing under a button still presses the button, and the thing stays hidden. So the buttons stay off the thing.
 
-The buttons stand around the thing's middle. Their distance is the thing's radius on the screen plus 44 pixels, between 78 and 130 pixels, as before, so a button's inner edge is 13 pixels outside the dashed ring. When all four fit on the screen at their usual places, Kind above, Variation to the right, Design below and Remove to the left, they go there. Otherwise the viewer finds the longest arc around the thing at which a button is whole on the screen, clear of the status line above and of the dock, the strip and the design bar below. It spreads the four buttons evenly along that arc, as much as 90° apart, in the same order clockwise. Two buttons need a gap of 6 pixels, which sets the least angle between them. If the arc is too short at 130 pixels, the buttons may stand as far as 180 pixels out. In a corner where even that leaves no arc, the whole wheel moves inward as it did before.
+The buttons stand around the thing's middle. Their distance is the thing's radius on the screen plus 44 pixels, between 78 and 130 pixels, as before, so a button's inner edge is 13 pixels outside the dashed ring. When all four fit on the screen at their usual places, Kind above, Variation to the right, Design below and Remove to the left, they go there. Otherwise the viewer finds the longest arc around the thing at which a button is whole on the screen, clear of the status line above and of the dock, the strip and the design bar below. It spreads the four buttons evenly along that arc, as much as 90° apart, in the same order clockwise. Two buttons need a gap of 6 pixels, which sets the least angle between them. If the arc is too short at 130 pixels, the buttons may stand as far as 180 pixels out. In a corner where even that leaves no arc, the whole wheel shifts inward as it did before.
 
 A thing larger than 86 pixels in radius has its buttons over its rim, as before. Its middle stays free.
 
@@ -57,7 +57,7 @@ The page already asks the phone to fill the whole screen, with `viewport-fit=cov
 - With the skull low on a phone's screen, the wheel opens with its buttons above and beside the thing, and Kind is no longer always on top. The order around the thing stays the same.
 - A short stroke that ends in a zoom within half a second is lost. A person who means a dot lifts the finger first, and a lifted dot stays.
 - Some clouds above the painting's top are the pale, lit clouds from the middle of the painting's sky. Near the top edge the old and new clouds fade across each other, which looks like a band of thinner cloud.
-- A phone on its side is 402 points tall. The 230 pixels kept for the dock, the strip and the design bar leave no band tall enough for the wheel, so there the wheel moves inward as a whole, as it did before, and a button can still cover the thing.
+- A phone on its side is 402 points tall. The 230 pixels kept for the dock, the strip and the design bar leave no band tall enough for the wheel, so there the wheel shifts inward as a whole, as it did before, and a button can still cover the thing.
 - A wheel button can still reach under a notch on a phone on its side. The wheel keeps 5 pixels from the window's edges, not from the safe area.
 
 ## Resolved Questions

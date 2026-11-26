@@ -185,7 +185,7 @@ export function layWheel(at: OnScreen): { x: number; y: number; reach: number; a
       return { x: at.x, y: at.y, reach, angles: AROUND.map((_, i) => start + i * spacing) };
     }
   }
-  // In a corner with no room around the thing, the wheel moves inward as a whole and stays on the screen.
+  // In a corner with no room around the thing, the wheel shifts inward as a whole and stays on the screen.
   const reach = first;
   const edge = reach + room;
   const within = (value: number, low: number, high: number): number =>

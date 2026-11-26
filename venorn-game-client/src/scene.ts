@@ -29,7 +29,7 @@ const CROSSING = 13;
 // Seconds between one flock and the next: at least the first number, at most the sum.
 const QUIET: [number, number] = [22, 30];
 const TURN = Math.PI * 2;
-// The drifting layer's ring carries on this share of the picture's height above its top.
+// The ring of the layer that flows carries on this share of the picture's height above its top.
 const CLOUDS_ABOVE = 0.6;
 
 /** Elevation in radians of a height on the structure's plane, as seen from the front view. */

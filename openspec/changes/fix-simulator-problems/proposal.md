@@ -6,7 +6,7 @@ The game was tried by touch in Xcode's iPhone 17 simulator, held upright at 402 
 
 What exists now:
 
-- The wheel's buttons stand 78 pixels from the selected thing. Near an edge of the screen the whole wheel moves inward, so a button can sit on top of a small thing. On a phone held upright the skull sits low on the screen, where the wheel moves up and its Design button covers the thing. A finger that lands there presses the button, not the thing.
+- The wheel's buttons stand 78 pixels from the selected thing. Near an edge of the screen the whole wheel shifts inward, so a button can sit on top of a small thing. On a phone held upright the skull sits low on the screen, where the wheel shifts up and its Design button covers the thing. A finger that lands there presses the button, not the thing.
 - With the pen chosen, the first finger of a two-finger zoom starts a stroke, and the second finger ends it. The stroke stays as a dab of glitter where the first finger landed, and it is saved with the skull.
 - The status line keeps saying "Drag it to move it, pinch to resize, twist to turn" after the thing is let go.
 - The wrapped layer of clouds ends at the top of the painting, and the sky dome above it is one flat blue. A tall screen sees over the clouds once the camera turns or tilts: the top fifth of the screen is bare blue.

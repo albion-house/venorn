@@ -42,7 +42,7 @@ When the selected thing is let go, the status line SHALL say what it says when t
 
 ### Requirement: Clouds above the painting's top
 
-Where the asset set has a drifting layer of clouds, the viewer SHALL show painted clouds above the top of its picture, so that a tall screen sees no band of bare sky above the clouds when the camera turns or tilts. A wide screen's front view SHALL look as it did.
+Where the asset set has a floating layer of clouds that flows, the viewer SHALL show painted clouds above the top of its picture, so that a tall screen sees no band of bare sky above the clouds when the camera turns or tilts. A wide screen's front view SHALL look as it did.
 
 #### Scenario: Tall screen, camera turned and tilted
 

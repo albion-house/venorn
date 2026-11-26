@@ -16,7 +16,7 @@
 
 ## 5. Landscape
 
-- [x] 5.1 Keep the menu button, the menu and the status line inside the safe area at the left and the right. Verify: in an 874 by 402 touch window with insets of 62 at the left and right and 20 at the bottom, faked through the browser's `Emulation.setSafeAreaInsetsOverride`, the menu button and the menu go from 10 to 62 pixels from the left, and the status line from 60 to 112, ending 62 from the right edge in place of 10. With an inset at only one side, only that side moves. A 402 by 874 window with insets of 62 at the top and 34 at the bottom, and a 1280 by 800 window, keep the button at 10 and the status line at 60.
+- [x] 5.1 Keep the menu button, the menu and the status line inside the safe area at the left and the right. Verify: in an 874 by 402 touch window with insets of 62 at the left and right and 20 at the bottom, faked through the browser's `Emulation.setSafeAreaInsetsOverride`, the menu button and the menu go from 10 to 62 pixels from the left, and the status line from 60 to 112, ending 62 from the right edge in place of 10. With an inset at only one side, only that side changes. A 402 by 874 window with insets of 62 at the top and 34 at the bottom, and a 1280 by 800 window, keep the button at 10 and the status line at 60.
 
 ## 6. Simulator and phone
 
