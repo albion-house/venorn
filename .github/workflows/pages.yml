@@ -1,0 +1,72 @@
+# Build the game client and publish it on GitHub Pages at
+# https://albion-house.github.io/venorn/.
+#
+# A push to main that touches the client deploys it. A pull request that
+# touches it only builds, to show the build still works. Git ignores the asset
+# set, so the build downloads it from the GitHub release that
+# venorn-game-client/mise.toml names.
+name: Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "venorn-game-client/**"
+      - "mise.toml"
+      - "mise.lock"
+      - ".github/workflows/pages.yml"
+  pull_request:
+    paths:
+      - "venorn-game-client/**"
+      - "mise.toml"
+      - "mise.lock"
+      - ".github/workflows/pages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# One deploy at a time. A newer push waits for the running deploy to finish.
+concurrency:
+  group: pages-${{ github.event_name == 'pull_request' && github.ref || 'deploy' }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      # A fresh checkout's mise.toml files are not yet trusted.
+      MISE_TRUSTED_CONFIG_PATHS: ${{ github.workspace }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # Installs node, aube, vite and typescript at the versions in mise.lock.
+      # Run from the client's directory, it skips the pipeline's Python tools.
+      - uses: jdx/mise-action@90f833d396d0cc3674b631d2d225e306476c303a # v5.2.10
+        with:
+          working_directory: venorn-game-client
+          monorepo: false
+
+      - name: Download the asset set
+        run: mise //venorn-game-client:fetch-assets
+
+      - name: Type-check and build the site
+        run: mise //venorn-game-client:build
+
+      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          path: venorn-game-client/dist
+
+  deploy:
+    if: github.event_name != 'pull_request'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
