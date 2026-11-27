@@ -20,6 +20,7 @@ Where venorn stands as of 2026-11-26, what waits on codekiln, and what was discu
 | How long the pipeline takes on one new image, and a proposal for described things | [#34](https://github.com/albion-house/venorn/pull/34) |
 | Fixes for what the simulator showed: the wheel's buttons stay off a small selected thing, a zoom with the pen leaves no glitter, the status line follows the selection, the clouds reach above the top of the painting, and the menu button and status line keep clear of a notch | [#38](https://github.com/albion-house/venorn/pull/38) |
 | The game is published at https://albion-house.github.io/venorn/ on every push to `main` that touches the client. The asset set comes from a GitHub release, and `fetch-assets` gets it without running the pipeline | [#39](https://github.com/albion-house/venorn/pull/39) |
+| On a phone on its side the strip stands down the left side and the dock at the lower right, the design bar opens as a panel at the lower left, and the wheel keeps clear of them and of the safe area | [#41](https://github.com/albion-house/venorn/pull/41) |
 
 Every feature after the pipeline is a first version. codekiln called the ideas behind them tentative.
 
@@ -29,6 +30,7 @@ Every feature after the pipeline is a first version. codekiln called the ideas b
 - The viewer was checked with scripted pointer, wheel, key and touch events in a desktop browser, at laptop size and at 375 by 812, and with pictures read from the canvas. Each OpenSpec change's `tasks.md` records the measurements.
 - The game was tried by touch in Xcode's iPhone 17 simulator, in Safari. [The comment on #25](https://github.com/albion-house/venorn/issues/25#issuecomment-7204288883) lists what works and the problems seen. The simulator draws with the Mac's graphics chip, so it says nothing about a phone's speed. The fixes in #38 were checked with scripted touch in headless Chrome, with the phone's safe-area insets faked, and then in the simulator, upright and on its side ([comment on #25](https://github.com/albion-house/venorn/issues/25#issuecomment-7205796448)).
 - The published site was opened in Chrome on the Mac and in the simulator, where a tap placed a butterfly.
+- The layout for a phone on its side in #41 was checked with scripted touch in headless Chrome at 874 by 339, the simulator's page in Safari, with the safe-area insets faked for the island at either side. It has not been tried in the simulator.
 - Not checked on any real phone. codekiln listened to the music from #20 and asked for the changes in #36. Nobody has heard #36. The frame rate has not been measured.
 
 ## Waiting on codekiln
@@ -52,6 +54,7 @@ Each has background and a place for an answer in its `design.md`.
 - `openspec/changes/fix-rough-edges/design.md`: whether the clouds join at their ends the same way, and whether a button in the strip is the right way to turn the view with the pen.
 - `openspec/changes/adjust-sound-after-listening/design.md`: whether the cloud sounds start with the wind or come in with the music, and whether near clouds may pass in front of the skull's face.
 - `openspec/changes/fix-simulator-problems/design.md`: whether half a second and 20 pixels tell the start of a zoom from a short stroke, and whether the clouds above the top of the painting look right.
+- `openspec/changes/fix-landscape-layout/design.md`: whether the strip and the dock stand on opposite sides or together, and whether four buttons in one arc start from the one nearest Kind's usual place.
 - `openspec/changes/add-described-things/design.md`: how a described thing joins the five categories in the dock, how voice input works, where the image comes from, whether a described thing takes its size and criteria from the nearest kind, and whether described things keep the relief models if TRELLIS.2 makes the skull.
 
 ## Discussed and not built
@@ -70,7 +73,7 @@ Each has background and a place for an answer in its `design.md`.
 
 [#29](https://github.com/albion-house/venorn/issues/29) lists them. Still open: the skull's far side repeats its near side, the forest is soft where the skull was painted out of it, the opening ground is nearly bare, and the built script is large.
 
-The simulator showed four more, listed in the comment on #25, and a fifth with the phone on its side. #38 fixes all five. On a phone on its side the wheel still has too little room between the status line and the bars, so it can still cover a thing there.
+The simulator showed four more, listed in the comment on #25, and a fifth with the phone on its side. #38 fixes all five. With the phone on its side the bars also covered the lower half of the skull and left the wheel no room. #41 puts the strip and the dock at the sides there and keeps the wheel clear of them and of the safe area.
 
 ## OpenSpec changes still open
 
@@ -82,6 +85,7 @@ The simulator showed four more, listed in the comment on #25, and a fifth with t
 | `fix-rough-edges` | 1.3 turn the view with one finger on a real phone |
 | `adjust-sound-after-listening` | 4.2 listen and adjust |
 | `fix-simulator-problems` | 6.1 try the fixes on a real phone. The simulator check is done |
+| `fix-landscape-layout` | 4.1 try the layout in the simulator on its side, turned both ways, and on a real phone |
 | `add-described-things` | every task: lifting one image, a process that keeps the models loaded, and pinning a model the page receives |
 
 Archive a change with `openspec archive <name>` once its tasks are checked.
