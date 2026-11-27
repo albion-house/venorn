@@ -62,7 +62,7 @@ The item's words and the steps depend on the browser, which `src/install.ts` tel
 - Safari on a Mac, "Add to Dock": Share in the toolbar, then Add to Dock, or File > Add to Dock, then Add. It needs macOS Sonoma 14 or later. From Apple's [Turn a website into an app in Safari on Mac](https://support.apple.com/guide/safari/add-to-dock-ibrw9e991864/mac) and [Use Safari web apps on Mac](https://support.apple.com/en-us/104996).
 - Any other browser, "Install as an app": open the page in Chrome, or in Safari on an iPhone, iPad or Mac.
 
-Chrome, and other browsers built on it, fire `beforeinstallprompt` when a site can be installed. The page keeps that event, and the steps then have an Install button that opens Chrome's own prompt. After `appinstalled` the item is hidden.
+Chrome, and other browsers built on it, fire `beforeinstallprompt` when a site can be installed. The page keeps that event, and the steps then have an Install button that opens Chrome's own prompt. Keeping the event also stops Chrome on Android from showing its own install bar at the foot of the page, so the menu and Chrome's menu are the ways in. After `appinstalled` the item is hidden.
 
 The steps open in a `<dialog>` that the page makes when it is first needed, so `index.html`'s body gains only the menu item. A tap outside the panel or Close closes it, and keys pressed in it do not reach the game. Opened as an installed app, which `display-mode: standalone` or iOS's `navigator.standalone` tells, the page hides the item.
 
