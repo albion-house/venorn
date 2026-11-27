@@ -42,7 +42,13 @@ export interface ModelEntry {
 
 export interface Manifest {
   source: string;
+  // The work the asset set is made from, as its artist presents it, for the About screen. An asset set
+  // exported before the About screen has no artist, page or original.
   title: string;
+  artist?: string | null;
+  page?: string | null;
+  // A smaller copy of the work's image, its size in pixels and what it shows.
+  original?: { image: string; width: number; height: number; description: string };
   structure: { id: string; model: string; painted: string; thickness: number; features?: Feature[] };
   kinds: { id: string; role: "pinned" | "printed"; models: ModelEntry[] }[];
   // The groups the player chooses from, in the order of the number keys.

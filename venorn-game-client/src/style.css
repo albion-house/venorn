@@ -339,3 +339,135 @@ label {
     visibility: hidden;
   }
 }
+
+/* The About screen: the painting the game is made from, its title, its artist, a link to it and the version.
+   It stands inside the safe area and scrolls when it does not fit. On a tall screen the words stand above
+   and below the painting. */
+#about {
+  --top: max(12px, env(safe-area-inset-top));
+  --bottom: max(12px, env(safe-area-inset-bottom));
+  inset: var(--top) var(--right) var(--bottom) var(--left);
+  width: min(520px, 100% - var(--left) - var(--right));
+  max-width: none;
+  max-height: calc(100% - var(--top) - var(--bottom));
+  margin: auto;
+  padding: 18px 20px;
+  border: 0;
+  border-radius: 18px;
+  background: rgb(24 30 38 / 0.94);
+  color: var(--ink);
+  text-align: center;
+  overflow: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+}
+
+#about[open] {
+  display: grid;
+  grid-template-areas: "title" "artist" "painting" "page" "start" "version";
+  justify-items: center;
+  gap: 10px;
+}
+
+#about::backdrop {
+  background: rgb(6 10 16 / 0.6);
+}
+
+#about [hidden] {
+  display: none;
+}
+
+#about-title {
+  grid-area: title;
+  margin: 0;
+  font-size: 1.45rem;
+  font-weight: normal;
+  font-style: italic;
+  line-height: 1.2;
+}
+
+#about-artist {
+  grid-area: artist;
+  margin: -6px 0 0;
+}
+
+/* The painting takes the height the words leave, so the whole screen fits without scrolling where it can. */
+#about-painting {
+  grid-area: painting;
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: max(220px, 100dvh - var(--top) - var(--bottom) - 250px);
+  border-radius: 4px;
+  box-shadow: 0 4px 18px rgb(0 0 0 / 0.45);
+}
+
+#about-page {
+  grid-area: page;
+  color: var(--accent);
+}
+
+#about-start {
+  grid-area: start;
+  min-width: 160px;
+  padding: 11px 28px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #1d1a14;
+  font-size: 1.05rem;
+  cursor: pointer;
+}
+
+#about-start:focus-visible,
+#about a:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 3px;
+}
+
+#about-version {
+  grid-area: version;
+  margin: 2px 0 0;
+  font-size: 0.72rem;
+  opacity: 0.6;
+  overflow-wrap: anywhere;
+}
+
+#about-version a {
+  color: inherit;
+}
+
+/* On a wide screen the painting stands at the left, as tall as the screen allows, and the words at the right. */
+@media (orientation: landscape) {
+  #about {
+    width: fit-content;
+    max-width: calc(100% - var(--left) - var(--right));
+  }
+
+  #about[open] {
+    grid-template-columns: auto minmax(190px, 300px);
+    grid-template-rows: 1fr auto auto auto auto 1fr auto;
+    grid-template-areas:
+      "painting ."
+      "painting title"
+      "painting artist"
+      "painting page"
+      "painting start"
+      "painting ."
+      "painting version";
+    justify-items: start;
+    align-items: center;
+    column-gap: 24px;
+    text-align: left;
+  }
+
+  #about-painting {
+    max-width: none;
+    max-height: max(200px, 100dvh - var(--top) - var(--bottom) - 36px);
+  }
+
+  #about-version {
+    align-self: end;
+  }
+}

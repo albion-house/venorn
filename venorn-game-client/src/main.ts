@@ -2,6 +2,7 @@ import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { MeshBVH, acceleratedRaycast } from "three-mesh-bvh";
+import { showAbout } from "./about";
 import { watchGestures, type Hit } from "./gestures";
 import { buildCloudSound, type CloudSound } from "./clouds";
 import { buildLinks, type Links } from "./links";
@@ -722,6 +723,9 @@ function watchKeys(): void {
 async function start(): Promise<void> {
   manifest = await (await fetch(`${ASSETS}manifest.json`)).json();
   document.title = `venorn: ${manifest.title}`;
+  // The About screen covers the scene while it loads, and the tap on its button lets the sound start.
+  showAbout(manifest, ASSETS, startWind);
+  say("Loading…");
 
   structure = await loadMesh(manifest.structure.model);
   structure.scale.setScalar(STRUCTURE_SIZE);
