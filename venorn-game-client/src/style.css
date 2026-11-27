@@ -88,10 +88,11 @@ label {
   cursor: pointer;
 }
 
-/* While a thing is selected, Done at the top right lets go of it. It is level with the menu button. */
+/* While a thing is selected, Done at the top right lets go of it. It is level with the menu button, and in an
+   iPhone app it stands inside the safe area at the top, 2 pixels lower than level. */
 #let-go {
   position: fixed;
-  top: 8px;
+  top: max(8px, env(safe-area-inset-top));
   right: var(--right);
   min-width: 64px;
   height: 44px;
