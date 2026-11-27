@@ -79,6 +79,7 @@ class Scene:
 @dataclass(frozen=True)
 class Source:
     name: str
+    # The work the image comes from, as its artist presents it.
     title: str
     image_url: str
     image_sha256: str
@@ -87,6 +88,11 @@ class Source:
     categories: tuple[Category, ...]
     scene: Scene | None
     root: Path
+    artist: str | None = None
+    # A link to the work's page.
+    page: str | None = None
+    # What the image shows, in words, for a person who cannot see it.
+    image_description: str = ""
 
     @property
     def cache_dir(self) -> Path:
@@ -183,8 +189,11 @@ def load_source(name: str, root: Path | None = None) -> Source:
     return Source(
         name=data["name"],
         title=data.get("title", data["name"]),
+        artist=data.get("artist"),
+        page=data.get("page"),
         image_url=data["image"]["url"],
         image_sha256=data["image"]["sha256"],
+        image_description=data["image"].get("description", ""),
         structure=Structure(
             id=structure["id"],
             prompts=tuple(p.lower() for p in structure["prompts"]),

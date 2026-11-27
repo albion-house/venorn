@@ -14,6 +14,7 @@
 
     <button id="more" type="button" aria-expanded="false" aria-controls="menu" title="More">⋯</button>
     <nav id="menu" hidden aria-label="More">
+      <button id="about-open" type="button">About</button>
       <button id="front" type="button">Front view</button>
       <button id="rear" type="button">Rear view</button>
       <button id="arrange" type="button">Arrange as painted</button>
@@ -35,6 +36,16 @@
       <button type="button" data-action="remove">Remove</button>
     </div>
     <aside id="design" hidden aria-label="Design of the selected thing"></aside>
+
+    <!-- The painting the game is made from. src/about.ts fills it from the asset set's manifest and opens it. -->
+    <dialog id="about" aria-labelledby="about-title">
+      <h1 id="about-title"></h1>
+      <p id="about-artist"></p>
+      <img id="about-painting" alt="" decoding="async" />
+      <a id="about-page" target="_blank" rel="noopener"></a>
+      <button id="about-start" type="button" autofocus>Start</button>
+      <p id="about-version"></p>
+    </dialog>
 
     <script type="module" src="./src/main.ts"></script>
   </body>

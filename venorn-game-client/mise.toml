@@ -10,5 +10,5 @@
 # The asset set the GitHub Pages site is built with: a file attached to a GitHub
 # release. `mise //venorn-game-client:publish-assets` uploads a new one and
 # rewrites these two lines. `mise //venorn-game-client:fetch-assets` downloads it.
-VENORN_ASSETS_TAG = "assets-veneration-ornamentation-20261126-2350"
-VENORN_ASSETS_SHA256 = "38d60197bf1c9ce5c6d498f97e7b5e2d0375436bf002e0adc98b42991719defc"
+VENORN_ASSETS_TAG = "assets-veneration-ornamentation-20261127-0032"
+VENORN_ASSETS_SHA256 = "93bb6afe89a241733be75ff0dd14e76e790015ff5d528d3bed34edd22e630ff3"

@@ -25,10 +25,12 @@ trap 'rm -rf "${work}"' EXIT
 COPYFILE_DISABLE=1 tar -czhf "${work}/${file}" -C public/assets "${set_name}"
 sum="$(shasum -a 256 "${work}/${file}" | cut -d ' ' -f 1)"
 
+# A pre-release is never shown as the repository's latest release. --latest=false
+# alone is not enough: with no release marked latest, GitHub shows the newest.
 gh release create "${tag}" "${work}/${file}" \
   --title "Asset set ${set_name} ${stamp}" \
   --notes "The models, pictures and manifest the asset pipeline exported. The GitHub Pages build downloads this file with \`mise //venorn-game-client:fetch-assets\`. It is not a release of the game." \
-  --latest=false
+  --prerelease
 
 mise set --file mise.toml VENORN_ASSETS_TAG="${tag}" VENORN_ASSETS_SHA256="${sum}"
 echo "Released ${tag}. Commit venorn-game-client/mise.toml so the site builds with it."

@@ -4,7 +4,7 @@ context: |
   venorn is a calm browser game about adorning a skull in a meadow. The player
   pins objects to a unicorn skull and paints on it, building a shrine that ends
   up looking like a poster. The look comes from the Fawnicorn painting
-  "Veneration Ornamentation".
+  "Veneration, Ornamentation".
 
   The scene is real 3D seen from the front: the camera turns a few degrees to
   the left and right and never shows the far side. The game has to work with

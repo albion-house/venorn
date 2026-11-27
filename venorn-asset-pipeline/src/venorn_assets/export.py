@@ -7,8 +7,14 @@ import os
 import shutil
 from pathlib import Path
 
+from PIL import Image
+
 from .criteria import validate
 from .source import Source
+
+# The copy of the source image that the game's About screen shows, and the most pixels on its longer side.
+ORIGINAL = "original.jpg"
+ORIGINAL_SIDE = 1200
 
 
 def _repeat(layer: dict) -> dict:
@@ -20,6 +26,18 @@ def client_assets_dir(source: Source) -> Path:
     override = os.environ.get("VENORN_ASSETS_EXPORT_DIR")
     base = Path(override) if override else source.root.parent / "venorn-game-client" / "public" / "assets"
     return base / source.name
+
+
+def smaller_original(path: Path) -> Image.Image:
+    """The image at most ORIGINAL_SIDE pixels on its longer side, with its color profile.
+
+    A smaller image keeps its size.
+    """
+    with Image.open(path) as image:
+        copy = image.convert("RGB")
+        copy.info = {"icc_profile": image.info["icc_profile"]} if "icc_profile" in image.info else {}
+    copy.thumbnail((ORIGINAL_SIDE, ORIGINAL_SIDE), Image.Resampling.LANCZOS)
+    return copy
 
 
 def export(source: Source) -> None:
@@ -142,9 +160,19 @@ def export(source: Source) -> None:
             },
         }
 
+    original = smaller_original(source.image_path)
     manifest = {
         "source": source.name,
+        # The work the image comes from, for the game's About screen.
         "title": source.title,
+        "artist": source.artist,
+        "page": source.page,
+        "original": {
+            "image": ORIGINAL,
+            "width": original.width,
+            "height": original.height,
+            "description": source.image_description,
+        },
         "structure": {
             "id": structure["id"],
             "model": structure["model"],
@@ -171,6 +199,9 @@ def export(source: Source) -> None:
         shutil.copy2(layers_dir / cutout.removeprefix("layer-"), out / cutout)
         for plant in scene["ground"]["plants"]:
             shutil.copy2(layers_dir / plant["image"], out / plant["image"])
+    original.save(
+        out / ORIGINAL, quality=85, optimize=True, progressive=True, icc_profile=original.info.get("icc_profile")
+    )
     (out / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
 
     total = sum(len(kind["models"]) for kind in kinds)

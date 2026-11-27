@@ -4,13 +4,13 @@ A calm browser game about adorning a skull in a meadow. The player pins candies,
 
 Play it at https://albion-house.github.io/venorn/.
 
-The game takes its look from the Fawnicorn painting [Veneration Ornamentation](https://fawnicorn.com/assets/art/veneration-ornamentation.jpg): a decorated skull lying in a flowering meadow, with a forest and curling clouds behind it.
+The game takes its look from the Fawnicorn painting [Veneration, Ornamentation](https://fawnicorn.com/personal-art/veneration-ornamentation/): a decorated skull lying in a flowering meadow, with a forest and curling clouds behind it.
 
 ## Layout
 
 | Directory | What it holds |
 | --- | --- |
-| `venorn-asset-pipeline/` | Python pipeline that turns a source image into 3D models, each with adjustment criteria, and into the layers of the scene around them |
+| `venorn-asset-pipeline/` | Python pipeline that turns a source image into 3D models, each with adjustment criteria, into the layers of the scene around them, and into a smaller copy of the image for the About screen |
 | `venorn-game-client/` | TypeScript and three.js web client. Its build output is the GitHub Pages site |
 | `openspec/` | Specs, and the change proposals that precede each piece of work |
 
@@ -55,6 +55,8 @@ Git ignores the asset set, so the workflow downloads it from a GitHub release. `
 1. Run `mise //venorn-game-client:publish-assets`. It attaches the set to a new release and rewrites those two lines.
 2. Commit `venorn-game-client/mise.toml` and merge it to `main`. The push publishes the site with the new set.
 
+A checkout that already has an asset set keeps it when `mise.toml` names a new one. `mise //venorn-game-client:fetch-assets --force` replaces it.
+
 The `phone` task prints the addresses to open. It serves the built site, so run it again after a change.
 
 ## On a phone
@@ -75,6 +77,8 @@ Then, each time:
 `tailscale status` on this Mac lists the devices in the tailnet and says which are connected.
 
 ## In the viewer
+
+The game opens on the About screen: the painting, its title, "by Fawnicorn", a link to the painting's page and, in small type, the commit and asset set the site was built from. Pressing Start or Escape closes it, and About in the menu opens it again.
 
 The dock along the bottom holds the five categories (butterflies, candies, pills, jewels and flowers) and a glitter pen. The strip above it holds the variations of the chosen category. A placed thing is selected, and a dashed ring marks it.
 
@@ -98,7 +102,7 @@ The dock along the bottom holds the five categories (butterflies, candies, pills
 | Zoom | Scroll | Pinch |
 | Pan | Right-drag or Shift+drag | Drag with two fingers |
 
-The button in the top left corner opens the menu: Front view, Rear view, Arrange as painted, Clear, Painted skull and Sound.
+The button in the top left corner opens the menu: About, Front view, Rear view, Arrange as painted, Clear, Painted skull and Sound.
 
 The browser keeps the decorated skull, its things and its strokes, and puts it back when the page opens again. "Clear" and "Arrange as painted" keep the skull they replace, and "Bring back the last skull" in the menu puts it back. A browser that refuses storage, as a private window can, keeps nothing after the page closes, and the status line says so.
 
