@@ -35,6 +35,9 @@ const status = document.querySelector<HTMLElement>("#status")!;
 const more = document.querySelector<HTMLElement>("#more")!;
 const menu = document.querySelector<HTMLElement>("#menu")!;
 const letGo = document.querySelector<HTMLElement>("#let-go")!;
+const hideControls = document.querySelector<HTMLElement>("#hide-controls")!;
+const showControls = document.querySelector<HTMLElement>("#show-controls")!;
+const mute = document.querySelector<HTMLElement>("#mute")!;
 // An empty box over the screen's safe area, which leaves out a notch, an island and rounded corners.
 const safe = document.querySelector<HTMLElement>("#safe")!;
 // A wide, short window, such as a phone on its side. The stylesheet puts the strip and the dock at the sides
@@ -57,6 +60,10 @@ const AROUND = [-90, 0, 90, 180];
 
 // The ring slides away this fast after a flick, in milliseconds, and fades as it goes.
 const AWAY = 260;
+
+// A swipe on the dock or the strip hides the controls once the finger has gone this many pixels toward the edge
+// they stand at, and at least twice as far as across.
+const SWIPE = 40;
 
 // How far one press of a step button or an arrow key changes each setting in the design bar, and how each
 // setting's value is written under its name.
@@ -186,6 +193,67 @@ export function showLetGo(on: boolean): void {
 
 export function onLetGo(act: () => void): void {
   letGo.addEventListener("click", act);
+}
+
+/** Show on the mute button whether the sound is off. */
+export function showMuted(muted: boolean): void {
+  mute.setAttribute("aria-pressed", String(muted));
+  mute.title = muted ? "Turn the sound on (M)" : "Mute (M)";
+}
+
+export function onMute(act: () => void): void {
+  mute.addEventListener("click", act);
+}
+
+/** Hide the dock, the strip and the status line, so that the scene is all there is to see, or bring them back. */
+export function showingControls(on: boolean): void {
+  document.body.classList.toggle("looking", !on);
+  showControls.hidden = on;
+  hideControls.textContent = on ? "Hide the controls" : "Show the controls";
+}
+
+/**
+ * Watch the ways to hide and show the controls: the menu's item, which does both, the button that stands where
+ * the dock was while they are hidden, and a swipe on the dock or the strip toward the edge they stand at.
+ */
+export function onControls(on: { toggle: () => void; show: () => void; hide: () => void }): void {
+  hideControls.addEventListener("click", on.toggle);
+  showControls.addEventListener("click", on.show);
+  let swiped = false;
+  for (const element of [dock, strip]) {
+    let start: { pointer: number; x: number; y: number } | undefined;
+    element.addEventListener("pointerdown", (event) => {
+      start = { pointer: event.pointerId, x: event.clientX, y: event.clientY };
+    });
+    element.addEventListener("pointermove", (event) => {
+      if (start?.pointer !== event.pointerId) return;
+      const x = event.clientX - start.x;
+      const y = event.clientY - start.y;
+      // Upright, both stand at the bottom. On a phone on its side, the dock stands at the right and the strip at the left.
+      const [away, across] = !sideways.matches ? [y, x] : element === dock ? [x, y] : [-x, y];
+      if (away < SWIPE || away < 2 * Math.abs(across)) return;
+      start = undefined;
+      swiped = true;
+      on.hide();
+    });
+    for (const type of ["pointerup", "pointercancel"]) {
+      element.addEventListener(type, () => {
+        start = undefined;
+      });
+    }
+  }
+  // The finger that swiped may lift over the button it started on, which must not take the swipe as a press.
+  window.addEventListener("pointerdown", () => (swiped = false), { capture: true });
+  window.addEventListener(
+    "click",
+    (event) => {
+      if (!swiped) return;
+      swiped = false;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+    },
+    { capture: true },
+  );
 }
 
 /** After a flick, slide a copy of the ring off by some pixels and fade it out. */

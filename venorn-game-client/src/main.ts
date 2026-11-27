@@ -58,6 +58,8 @@ const SAVE_AFTER = 400;
 // Where the browser keeps the skull on the structure, and the last one cleared away.
 const SKULL_KEY = storageKey(ASSET_SET, "skull");
 const LAST_KEY = storageKey(ASSET_SET, "last-skull");
+// Whether the player muted the sound. It holds for every asset set.
+const MUTED_KEY = "venorn:muted";
 // The ring around a selected thing is at least this many pixels in radius.
 const MIN_RING = 16;
 // A tap this many pixels from the middle of a thing still counts as a tap on it.
@@ -148,6 +150,9 @@ const variation: number[] = [];
 let selected: Placed | undefined;
 let wheelOpen = false;
 let designOpen = false;
+// Whether the controls are hidden, so that the scene is all there is to see.
+let looking = false;
+let muted = false;
 // A drag, pinch or twist on a thing is under way, so the wheel stays out of the way.
 let shaping = false;
 // Things whose shape is recomputed before the next frame is drawn.
@@ -234,6 +239,37 @@ function hint(): string {
 function show(index: number): void {
   category = index;
   ui.showCategory(categories, category, variation[category], chooseVariation);
+}
+
+/** Whether the player muted the sound on an earlier visit. */
+function mutedBefore(): boolean {
+  try {
+    return window.localStorage.getItem(MUTED_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+/** Turn the sound off or on, and remember it for the next visit. */
+function mute(on: boolean): void {
+  muted = on;
+  setSound(!on);
+  ui.showMuted(on);
+  try {
+    if (on) window.localStorage.setItem(MUTED_KEY, "1");
+    else window.localStorage.removeItem(MUTED_KEY);
+  } catch {
+    // A browser that refuses storage forgets the choice at the end of the visit.
+  }
+}
+
+/** Hide the controls to look at the skull, letting go of a selected thing, or bring them back. */
+function look(on: boolean): void {
+  if (on === looking) return;
+  if (on) select(undefined);
+  looking = on;
+  ui.showingControls(!on);
+  if (!on) say(hint());
 }
 
 /** Choose a category. A selected thing turns into that category's current variation. */
@@ -732,12 +768,29 @@ function place(hit: Hit): void {
 
 function watchKeys(): void {
   window.addEventListener("keydown", (event) => {
-    if (event.key.toLowerCase() === "z" && painting()) {
+    if (event.key.toLowerCase() === "z" && painting() && !looking) {
       undoStroke();
       event.preventDefault();
       return;
     }
     if (event.metaKey || event.ctrlKey) return;
+    // M mutes the sound and turns it back on.
+    if (event.key.toLowerCase() === "m" && !(event.target instanceof HTMLInputElement)) {
+      mute(!muted);
+      event.preventDefault();
+      return;
+    }
+    // H hides the controls and brings them back. While they are hidden, Escape brings them back too, and the
+    // other keys wait for them.
+    if (event.key.toLowerCase() === "h" && !(event.target instanceof HTMLInputElement)) {
+      look(!looking);
+      event.preventDefault();
+      return;
+    }
+    if (looking) {
+      if (event.key === "Escape" && !ui.closeMenu()) look(false);
+      return;
+    }
     // A slider that has the keyboard keeps its arrow keys.
     const slider = event.target instanceof HTMLElement && event.target.getAttribute("role") === "slider";
     if ((slider || event.target instanceof HTMLInputElement) && event.key.startsWith("Arrow")) return;
@@ -766,6 +819,8 @@ async function start(): Promise<void> {
   manifest = await (await fetch(`${ASSETS}manifest.json`)).json();
   document.title = `venorn: ${manifest.title}`;
   // The About screen covers the scene while it loads, and the tap on its button lets the sound start.
+  // A player who muted the sound on an earlier visit finds it off.
+  mute(mutedBefore());
   showAbout(manifest, ASSETS, startWind);
   say("Loading…");
 
@@ -852,6 +907,7 @@ async function start(): Promise<void> {
   show(0);
   ui.watchMenu();
   ui.onLetGo(() => select(undefined));
+  ui.onControls({ toggle: () => look(!looking), show: () => look(false), hide: () => look(true) });
   ui.onWheel((action) => {
     if (!selected) return;
     // Kind steps through the categories of things and passes over the pen.
@@ -914,6 +970,8 @@ async function start(): Promise<void> {
     strokeCancel: () => {
       if (pen?.cancel()) changed();
     },
+    looking: () => looking,
+    showControls: () => look(false),
     shaping: (on) => {
       // A thing that was dragged may now lie along the spike.
       if (shaping && !on) checkRow();
@@ -935,9 +993,8 @@ async function start(): Promise<void> {
     material.map = (event.target as HTMLInputElement).checked ? paintedTexture : bareTexture;
     material.needsUpdate = true;
   });
+  ui.onMute(() => mute(!muted));
   // The wind starts with the first tap, click or key press, which is when a browser allows sound.
-  const sound = document.querySelector<HTMLInputElement>("#sound")!;
-  sound.addEventListener("change", () => setSound(sound.checked));
   for (const gesture of ["pointerdown", "keydown"]) {
     window.addEventListener(gesture, startWind, { once: true });
   }
