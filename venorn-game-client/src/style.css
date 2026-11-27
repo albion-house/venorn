@@ -39,6 +39,14 @@ label {
   display: block;
 }
 
+/* The screen's safe area, which the wheel reads to keep its buttons out of a notch or an island. */
+#safe {
+  position: fixed;
+  inset: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  visibility: hidden;
+  pointer-events: none;
+}
+
 /* The menu of things used now and then, tucked behind one button. */
 #more {
   position: fixed;
@@ -268,7 +276,8 @@ label {
 
 /* A wide, short window, such as a phone on its side. Bars at the bottom would cover the lower half of the
    skull, so the variations stand down the left side under the left thumb, and the categories stand in two
-   columns at the lower right under the right thumb. The middle is left for the skull. */
+   columns at the lower right under the right thumb. The middle is left for the skull. ui.ts makes the same
+   test to keep the wheel clear of them. */
 @media (orientation: landscape) and (max-height: 500px) {
   /* The open menu stands over the strip. */
   #menu {
