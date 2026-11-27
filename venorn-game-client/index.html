@@ -4,8 +4,27 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
     <title>venorn</title>
-    <!-- No icon of its own yet. An empty one keeps the browser from asking for /favicon.ico. -->
-    <link rel="icon" href="data:," />
+    <meta name="description" content="A calm game of adorning a skull in a meadow, after Fawnicorn's painting Veneration, Ornamentation." />
+    <meta name="theme-color" content="#0458a1" />
+    <!-- Added to a home screen or the Dock, the game opens as an app. mise-tasks/app-images in the asset
+         pipeline makes the icons and launch screens from the painting. -->
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="icon" type="image/png" href="/app/icon-192.png" />
+    <link rel="apple-touch-icon" href="/app/apple-touch-icon.png" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="venorn" />
+    <!-- A solid status bar: the page starts below it. With black-translucent, iOS 27.2 drew the page from the top of
+         the screen but laid it out 62 points short of the bottom, the status bar's height. -->
+    <meta name="apple-mobile-web-app-status-bar-style" content="black" />
+    <!-- iOS shows a launch screen only when one matches the screen's size exactly. -->
+    <link rel="apple-touch-startup-image" media="(device-width: 402px) and (device-height: 874px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="/app/launch-1206x2622.jpg" />
+    <link rel="apple-touch-startup-image" media="(device-width: 440px) and (device-height: 956px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="/app/launch-1320x2868.jpg" />
+    <link rel="apple-touch-startup-image" media="(device-width: 420px) and (device-height: 912px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="/app/launch-1260x2736.jpg" />
+    <link rel="apple-touch-startup-image" media="(device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="/app/launch-1179x2556.jpg" />
+    <link rel="apple-touch-startup-image" media="(device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="/app/launch-1290x2796.jpg" />
+    <link rel="apple-touch-startup-image" media="(device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="/app/launch-1170x2532.jpg" />
+    <link rel="apple-touch-startup-image" media="(device-width: 428px) and (device-height: 926px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="/app/launch-1284x2778.jpg" />
     <link rel="stylesheet" href="./src/style.css" />
   </head>
   <body>
@@ -22,6 +41,7 @@
       <button id="bring-back" type="button" hidden>Bring back the last skull</button>
       <label><input id="painted" type="checkbox" /> Painted skull</label>
       <label><input id="sound" type="checkbox" checked /> Sound</label>
+      <button id="install" type="button" hidden>Install as an app</button>
     </nav>
     <p id="status" role="status"></p>
     <button id="let-go" type="button" hidden title="Let go of the selected thing (Escape)">Done</button>

@@ -40,6 +40,9 @@ mise //venorn-game-client:dev
 # Build the client and serve it to a phone, over Tailscale or the local network
 mise //venorn-game-client:phone
 
+# Make the app icons and iPhone launch screens from the painting
+mise //venorn-asset-pipeline:app-images
+
 # Lint, test and type-check every project, and validate the OpenSpec changes
 mise //:check
 ```
@@ -56,6 +59,10 @@ Git ignores the asset set, so the workflow downloads it from a GitHub release. `
 2. Commit `venorn-game-client/mise.toml` and merge it to `main`. The push publishes the site with the new set.
 
 A checkout that already has an asset set keeps it when `mise.toml` names a new one. `mise //venorn-game-client:fetch-assets --force` replaces it.
+
+The site has a web app manifest, so it can be added to a home screen or the Dock as an app. Its icons and iPhone launch screens are cut from the painting by `mise //venorn-asset-pipeline:app-images` and kept in git under `venorn-game-client/public/app/`.
+
+A service worker, `venorn-game-client/public/sw.js`, keeps the asset set on the device after the first visit and lets the game open offline. It keeps the set under the release tag and a checksum of the files, so a browser downloads the set again after `publish-assets` and the merge, and after the pipeline exports a changed set into a local build. The page itself comes from the network when there is one, so a new build shows on the next visit. The dev server registers no service worker.
 
 The `phone` task prints the addresses to open. It serves the built site, so run it again after a change.
 
@@ -102,7 +109,7 @@ The dock along the bottom holds the five categories (butterflies, candies, pills
 | Zoom | Scroll | Pinch |
 | Pan | Right-drag or Shift+drag | Drag with two fingers |
 
-The button in the top left corner opens the menu: About, Front view, Rear view, Arrange as painted, Clear, Painted skull and Sound.
+The button in the top left corner opens the menu: About, Front view, Rear view, Arrange as painted, Clear, Painted skull, Sound, and a last item that shows how to add the game as an app in the browser in use. It reads "Add to Home Screen" on a phone, "Add to Dock" in Safari on a Mac and "Install as an app" elsewhere, and it is hidden in the installed app. An app added from Safari, or from Chrome on an iPhone, keeps its own storage, so it starts with a bare skull.
 
 The browser keeps the decorated skull, its things and its strokes, and puts it back when the page opens again. "Clear" and "Arrange as painted" keep the skull they replace, and "Bring back the last skull" in the menu puts it back. A browser that refuses storage, as a private window can, keeps nothing after the page closes, and the status line says so.
 

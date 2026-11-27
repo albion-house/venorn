@@ -1,4 +1,8 @@
 import { execSync } from "node:child_process";
+import { createHash } from "node:crypto";
+import { readdirSync, readFileSync, statSync } from "node:fs";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 // A relative base lets the built site load from any path, such as
 // https://albion-house.github.io/venorn/.
@@ -20,6 +24,28 @@ function commit(): string {
   }
 }
 
+// A short checksum of the asset set that fetch-assets or the pipeline put in
+// public/assets/. The service worker keeps the asset set under the release tag
+// and this checksum, so it downloads the set again after a new release, and
+// after the pipeline exports a changed set on this Mac under the same tag.
+function assetSum(): string {
+  const hash = createHash("sha256");
+  const add = (path: string, name: string): void => {
+    if (statSync(path).isDirectory()) {
+      for (const entry of readdirSync(path).sort()) add(join(path, entry), `${name}/${entry}`);
+    } else {
+      hash.update(name);
+      hash.update(readFileSync(path));
+    }
+  };
+  try {
+    add(fileURLToPath(new URL("public/assets", import.meta.url)), "");
+  } catch {
+    return "none";
+  }
+  return hash.digest("hex").slice(0, 12);
+}
+
 export default ({ command }: { command: "build" | "serve" }) => ({
   base: "./",
   build: { target: "es2022" },
@@ -31,5 +57,7 @@ export default ({ command }: { command: "build" | "serve" }) => ({
     __VENORN_COMMIT__: JSON.stringify(commit()),
     __VENORN_BUILT__: JSON.stringify(command === "build" ? new Date().toISOString().slice(0, 10) : ""),
     __VENORN_ASSETS_TAG__: JSON.stringify(env.VENORN_ASSETS_TAG ?? ""),
+    // The dev server registers no service worker, so it skips reading the asset set.
+    __VENORN_ASSETS_SUM__: JSON.stringify(command === "build" ? assetSum() : ""),
   },
 });

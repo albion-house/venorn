@@ -23,6 +23,7 @@ Where venorn stands as of 2026-11-26, what waits on codekiln, and what was discu
 | On a phone on its side the strip stands down the left side and the dock at the lower right, the design bar opens as a panel at the lower left, and the wheel keeps clear of them and of the safe area | [#41](https://github.com/albion-house/venorn/pull/41) |
 | The game opens on an About screen with Fawnicorn's painting, its title as the artist writes it, a link to the painting's page and the build's version. About, first in the menu, opens it again. The asset set carries a copy of the painting and the title, artist and page | [#45](https://github.com/albion-house/venorn/pull/45) |
 | A selected thing is let go with Done at the top right, a flick on it, or a tap with its wheel open. The design bar lays its settings out in a grid of 44-point cells that show their values, with a slider drawn by the page between a minus and a plus button. The camera pans when the bar opens over the thing | [#46](https://github.com/albion-house/venorn/pull/46) |
+| The game can be added to a home screen or the Dock as an app, with an icon and iPhone launch screens made from the painting, and the menu's last item shows the steps for the browser in use. A service worker keeps the asset set on the device until a new one is published, and the game opens offline. The controls at the top stay clear of the status bar in an iPhone app | [#47](https://github.com/albion-house/venorn/pull/47) |
 
 Every feature after the pipeline is a first version. codekiln called the ideas behind them tentative.
 
@@ -35,6 +36,7 @@ Every feature after the pipeline is a first version. codekiln called the ideas b
 - The layout for a phone on its side in #41 was checked with scripted touch in headless Chrome at 874 by 339, the simulator's page in Safari, with the safe-area insets faked for the island at either side. It has not been tried in the simulator.
 - The About screen in #45 was checked on the built site with scripted touch in headless Chrome at 402 by 874 and at 874 by 339, with the safe-area insets faked, and with a mouse at 1280 by 800. It has not been tried in the simulator.
 - Letting go and the design bar in #46 were checked with scripted touch in headless Chrome at 402 by 874 and at 874 by 339, with the safe-area insets faked, and with a mouse at 1280 by 800. They have not been tried in the simulator.
+- The app and the service worker in #47 were checked in headless Chrome against the built site: the manifest and its icons load, the second visit asks the server for no file of the asset set, the game opens offline, and a new tag replaces the kept set. The menu's steps were checked with the user agents of six browsers, and the top of the page with a safe-area inset of 62 faked at 402 by 874. Nobody has added the game to a home screen.
 - Not checked on any real phone. codekiln listened to the music from #20 and asked for the changes in #36. Nobody has heard #36. The frame rate has not been measured.
 
 ## Waiting on codekiln
@@ -45,6 +47,7 @@ Every feature after the pipeline is a first version. codekiln called the ideas b
 | Listen to the music in a background tab, the gusting wind and the clouds' sounds | [#26](https://github.com/albion-house/venorn/issues/26), task 4.2 in `openspec/changes/adjust-sound-after-listening/tasks.md` |
 | Access to the DINOv3 weights on Hugging Face, which TRELLIS.2 needs. The request is pending, and the port is not to be cloned until it can be used | [#5](https://github.com/albion-house/venorn/issues/5) |
 | Look through the pipeline's check pictures and say which kinds, exemplars and layer rules to change | `openspec/changes/add-decoration-play/tasks.md`, task 4.1 |
+| Add the game to the home screen from Safari and from Chrome on the iPhone, and to the Dock from Safari on the Mac, and say whether the steps in the menu work | [#47](https://github.com/albion-house/venorn/pull/47), task 5.2 in `openspec/changes/add-installable-app/tasks.md` |
 | Answer the open questions | below |
 
 ### Open questions
@@ -61,6 +64,7 @@ Each has background and a place for an answer in its `design.md`.
 - `openspec/changes/fix-landscape-layout/design.md`: whether the strip and the dock stand on opposite sides or together, and whether four buttons in one arc start from the one nearest Kind's usual place.
 - `openspec/changes/add-about-screen/design.md`: whether the About screen opens on every load or only on a first visit, and whether Start waits until the scene has loaded.
 - `openspec/changes/let-go-and-design-by-touch/design.md`: whether Done belongs at the top right, whether a flick is told from a drag at the right speed, whether a tap on the skull with a wheel open lets go or places a thing, and whether the open design bar takes the strip's place upright.
+- `openspec/changes/add-installable-app/design.md`: whether the menu item stays in the installed app and says it is installed, whether the page reloads by itself when a new asset set arrives, and whether launch screens cover a phone on its side, iPads and older iPhones.
 - `openspec/changes/add-described-things/design.md`: how a described thing joins the five categories in the dock, how voice input works, where the image comes from, whether a described thing takes its size and criteria from the nearest kind, and whether described things keep the relief models if TRELLIS.2 makes the skull.
 
 ## Discussed and not built
@@ -94,6 +98,7 @@ The simulator showed four more, listed in the comment on #25, and a fifth with t
 | `fix-landscape-layout` | 4.1 try the layout in the simulator on its side, turned both ways, and on a real phone |
 | `add-about-screen` | 3.2 look at the About screen on a phone, upright and on its side |
 | `let-go-and-design-by-touch` | 3.2 try letting go and the design bar on a real phone and in the simulator |
+| `add-installable-app` | 5.2 add the game to a home screen in the simulator and on a real iPhone, and to the Dock on a Mac |
 | `add-described-things` | every task: lifting one image, a process that keeps the models loaded, and pinning a model the page receives |
 
 Archive a change with `openspec archive <name>` once its tasks are checked.
@@ -104,4 +109,4 @@ Archive a change with `openspec archive <name>` once its tasks are checked.
 2. `mise //venorn-asset-pipeline:build` makes the asset set, which git ignores. It takes one and a half to two minutes once the model weights are downloaded. Run it again after a change to the pipeline, then `mise //venorn-game-client:publish-assets` to put the new set on the published site. `mise //venorn-game-client:fetch-assets` downloads the published set in place of running the pipeline. Pass `--force` to replace a set that is already there, as after `mise.toml` names a new one.
 3. `mise //venorn-game-client:dev` serves the game at `http://localhost:5183`. `mise //venorn-game-client:phone` builds it and serves it to a phone.
 4. To check the viewer from a script, call `window.venorn.hold(true)`, then `window.venorn.draw(seconds)` for each frame, and read the canvas.
-5. Xcode and an iOS 27.2 simulator are set up on the Mac. With the phone task running, the simulator's Safari opens the game at `http://localhost:5190`. The browser keeps a saved skull for each address, so port 5183, port 5190 and https://albion-house.github.io/venorn/ keep separate skulls.
+5. Xcode and an iOS 27.2 simulator are set up on the Mac. With the phone task running, the simulator's Safari opens the game at `http://localhost:5190`. The browser keeps a saved skull for each address, so port 5183, port 5190 and https://albion-house.github.io/venorn/ keep separate skulls. An app added to the home screen keeps its own skull too. The built site at port 5190 registers the service worker, which keeps the asset set until the tag in `mise.toml` or the exported files change. The dev server at port 5183 registers none.

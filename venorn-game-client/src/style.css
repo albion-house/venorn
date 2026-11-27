@@ -4,6 +4,9 @@
      out of the way with safe-area insets, which are 0 on a phone held upright and on a computer. */
   --left: max(10px, env(safe-area-inset-left));
   --right: max(10px, env(safe-area-inset-right));
+  /* Room at the top. A page that reaches under a status bar or a notch gets a safe-area inset at the top, which
+     keeps the menu button and the status line below them. The iPhone app's status bar is solid, so it adds none. */
+  --top: max(10px, env(safe-area-inset-top));
   --ink: #f6efe0;
   --accent: #e9b84a;
   font-family: Georgia, "Times New Roman", serif;
@@ -50,7 +53,7 @@ label {
 /* The menu of things used now and then, tucked behind one button. */
 #more {
   position: fixed;
-  top: 10px;
+  top: var(--top);
   left: var(--left);
   width: 40px;
   height: 40px;
@@ -64,10 +67,15 @@ label {
 
 #menu {
   position: fixed;
-  top: 58px;
+  top: calc(var(--top) + 48px);
   left: var(--left);
   display: grid;
   gap: 6px;
+  /* On a phone on its side the menu is taller than the page, and it scrolls. */
+  max-height: calc(100% - var(--top) - 48px - max(10px, env(safe-area-inset-bottom)));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
 }
 
 #menu button,
@@ -80,10 +88,11 @@ label {
   cursor: pointer;
 }
 
-/* While a thing is selected, Done at the top right lets go of it. It is level with the menu button. */
+/* While a thing is selected, Done at the top right lets go of it. It is level with the menu button, and in an
+   iPhone app it stands inside the safe area at the top, 2 pixels lower than level. */
 #let-go {
   position: fixed;
-  top: 8px;
+  top: max(8px, env(safe-area-inset-top));
   right: var(--right);
   min-width: 64px;
   height: 44px;
@@ -100,9 +109,75 @@ body:has(#let-go:not([hidden])) #status {
   right: calc(var(--right) + 74px);
 }
 
+/* How to add the game as an app, opened from the menu's last item. */
+#install-steps {
+  width: min(380px, 100vw - 32px);
+  max-height: calc(100% - 32px);
+  padding: 0;
+  border: 0;
+  border-radius: 16px;
+  background: rgb(24 30 38 / 0.94);
+  color: var(--ink);
+  -webkit-user-select: text;
+  user-select: text;
+  /* On a phone on its side the steps may be taller than the page, and they scroll. */
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+}
+
+#install-steps::backdrop {
+  background: rgb(0 0 0 / 0.35);
+}
+
+#install-steps > div {
+  padding: 16px 18px;
+}
+
+#install-steps h2 {
+  margin: 0 0 8px;
+  font-size: 1.1rem;
+  font-weight: normal;
+}
+
+#install-steps ol {
+  margin: 0;
+  padding-left: 1.3em;
+  line-height: 1.4;
+}
+
+#install-steps li + li {
+  margin-top: 6px;
+}
+
+#install-steps p {
+  margin: 10px 0 0;
+  font-size: 0.85rem;
+  opacity: 0.85;
+}
+
+#install-steps .buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+#install-steps button {
+  padding: 8px 16px;
+  border: 0;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.14);
+  cursor: pointer;
+}
+
+#install-steps button.primary {
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+
 #status {
   position: fixed;
-  top: 10px;
+  top: var(--top);
   left: calc(var(--left) + 50px);
   right: var(--right);
   margin: 0;

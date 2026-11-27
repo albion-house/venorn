@@ -21,6 +21,7 @@ import {
   writeSkull,
   type SavedSkull,
 } from "./save";
+import { setUpApp } from "./install";
 import { buildSurroundings, type Surroundings } from "./scene";
 import { bus, playBirdCall, playGlitter, playPin, playRemove, scheduleWind, setSound, startWind } from "./sound";
 import { buildSurprises, SPEW_SECONDS, type Surprises } from "./surprises";
@@ -69,6 +70,8 @@ const NUDGE_SECONDS = 0.08;
 const SOUND_TICK = 250;
 
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
+// The menu's steps for adding the game as an app, and the service worker that keeps it on the device.
+setUpApp();
 
 interface Loaded {
   criteria: Criteria;

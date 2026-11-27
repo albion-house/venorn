@@ -48,9 +48,8 @@ const REACH = [78, 130, 180];
 const BUTTON = 62;
 const BETWEEN = 6;
 const MARGIN = 5;
-// Room the wheel leaves for the status line and the menu button above, and for the dock, strip and design bar
-// below when they stand at the bottom.
-const ABOVE = 50;
+// Room the wheel leaves for the dock, strip and design bar below when they stand at the bottom. Above, it
+// stays below the menu button and the status line beside it.
 const BELOW = 230;
 // The wheel's buttons in order around it, clockwise, and the angles they take when there is room all around.
 const WHEEL_ORDER: WheelAction[] = ["kind", "variation", "design", "remove"];
@@ -233,7 +232,8 @@ interface Box {
  */
 function wheelRoom(): { room: Box; controls: Box[] } {
   const area = safe.getBoundingClientRect();
-  const room = { left: area.left, top: Math.max(area.top, ABOVE), right: area.right, bottom: area.bottom };
+  const top = Math.max(area.top, more.getBoundingClientRect().bottom);
+  const room = { left: area.left, top, right: area.right, bottom: area.bottom };
   if (!sideways.matches) {
     // The open design bar can stand taller than the room kept below, so the wheel also keeps above it.
     const open = design.hidden ? Infinity : design.getBoundingClientRect().top;

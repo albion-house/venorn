@@ -49,8 +49,13 @@ export function showAbout(manifest: Manifest, assets: string, onStart: () => voi
   // Escape still closes it.
   about.addEventListener("keydown", (event) => event.stopPropagation());
   start.addEventListener("click", () => {
-    onStart();
+    // The screen closes first, so the game is reached even if starting the sound fails.
     about.close();
+    try {
+      onStart();
+    } catch (error) {
+      console.error("venorn: the sound did not start", error);
+    }
   });
   document.querySelector("#about-open")!.addEventListener("click", () => open("Back to the game"));
   open("Start");
