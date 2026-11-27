@@ -45,6 +45,10 @@ export interface Scene {
   strokeCancel(): void;
   /** A gesture on a thing has started or ended. */
   shaping(on: boolean): void;
+  /** Whether the controls are hidden so that the player can look at the skull. */
+  looking(): boolean;
+  /** Bring the hidden controls back. */
+  showControls(): void;
 }
 
 // A press that moves less than this many pixels is a tap.
@@ -125,7 +129,8 @@ export function watchGestures(scene: Scene): void {
     "pointerdown",
     (event) => {
       pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
-      if (pointers.size === 1 && event.button === 0 && scene.painting()) {
+      // While the controls are hidden, every press turns, zooms or pans the camera, and a tap brings the controls back.
+      if (pointers.size === 1 && event.button === 0 && scene.painting() && !scene.looking()) {
         // With a pen chosen, a press on the structure starts a stroke. A press anywhere else moves the camera,
         // and so does every press while the pen is put aside to turn the view.
         down = { x: event.clientX, y: event.clientY, button: event.button, time: event.timeStamp };
@@ -145,7 +150,7 @@ export function watchGestures(scene: Scene): void {
           y: event.clientY,
           button: event.button,
           time: event.timeStamp,
-          thing: scene.thingAt(event.clientX, event.clientY),
+          thing: scene.looking() ? undefined : scene.thingAt(event.clientX, event.clientY),
         };
         moved = false;
         if (event.button === 0 && down.thing && down.thing === scene.selected()) {
@@ -233,6 +238,8 @@ export function watchGestures(scene: Scene): void {
       scene.move(down.thing, from);
       const glide = (length: number): number => Math.max(-FLICK_THROW, Math.min(FLICK_THROW, length * FLICK_GLIDE));
       scene.deselect({ x: glide(flung.x), y: glide(flung.y) });
+    } else if (tapped && down && scene.looking()) {
+      if (down.button === 0) scene.showControls();
     } else if (tapped && down && scene.painting()) {
       // With a pen chosen, a tap off the structure does nothing.
     } else if (tapped && down) {

@@ -88,12 +88,37 @@ label {
   cursor: pointer;
 }
 
-/* While a thing is selected, Done at the top right lets go of it. It is level with the menu button, and in an
-   iPhone app it stands inside the safe area at the top, 2 pixels lower than level. */
+/* The sound's switch at the top right, level with the menu button. */
+#mute {
+  position: fixed;
+  top: var(--top);
+  right: var(--right);
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--panel);
+  cursor: pointer;
+}
+
+#mute .off,
+#mute[aria-pressed="true"] .on {
+  display: none;
+}
+
+#mute[aria-pressed="true"] .off {
+  display: inline;
+}
+
+/* While a thing is selected, Done at the top right, beside the sound's switch, lets go of it. It is level with the
+   menu button, and in an iPhone app it stands inside the safe area at the top, 2 pixels lower than level. */
 #let-go {
   position: fixed;
   top: max(8px, env(safe-area-inset-top));
-  right: var(--right);
+  right: calc(var(--right) + 48px);
   min-width: 64px;
   height: 44px;
   padding: 0 16px;
@@ -104,9 +129,9 @@ label {
   cursor: pointer;
 }
 
-/* The status line stops short of Done. */
+/* The status line stops short of the sound's switch, and of Done. */
 body:has(#let-go:not([hidden])) #status {
-  right: calc(var(--right) + 74px);
+  right: calc(var(--right) + 122px);
 }
 
 /* How to add the game as an app, opened from the menu's last item. */
@@ -179,7 +204,7 @@ body:has(#let-go:not([hidden])) #status {
   position: fixed;
   top: var(--top);
   left: calc(var(--left) + 50px);
-  right: var(--right);
+  right: calc(var(--right) + 50px);
   margin: 0;
   padding: 10px 0;
   font-size: 0.85rem;
@@ -274,6 +299,42 @@ body:has(#let-go:not([hidden])) #status {
   aspect-ratio: 1;
 }
 
+/* To just look at the skull, the dock, the strip and the status line slide toward the bottom and fade, and take
+   no presses. The small button where the dock was brings them back. */
+#dock,
+#strip,
+#status {
+  transition: opacity 220ms ease-out, translate 220ms ease-out, visibility 220ms;
+}
+
+body.looking #dock,
+body.looking #strip {
+  translate: 0 60px;
+  opacity: 0;
+  visibility: hidden;
+}
+
+body.looking #status {
+  opacity: 0;
+  visibility: hidden;
+}
+
+#show-controls {
+  position: fixed;
+  left: 50%;
+  bottom: max(10px, env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--panel);
+  cursor: pointer;
+}
+
 /* The wheel that opens around a selected thing. Its buttons stand clear of the thing, so the thing stays reachable in the middle. */
 #wheel {
   position: fixed;
@@ -312,7 +373,8 @@ body:has(#let-go:not([hidden])) #status {
 #ring[hidden],
 #design[hidden],
 #menu[hidden],
-#let-go[hidden] {
+#let-go[hidden],
+#show-controls[hidden] {
   display: none;
 }
 
@@ -535,6 +597,22 @@ body:has(#let-go:not([hidden])) #status {
   /* The panel lets the strip show through, so the strip steps aside while the panel is open. */
   body:has(#design:not([hidden])) #strip {
     visibility: hidden;
+  }
+
+  /* Hidden, the dock slides off to the right and the strip to the left, and the button that brings them back
+     stands where the dock was. */
+  body.looking #dock {
+    translate: 60px 0;
+  }
+
+  body.looking #strip {
+    translate: -60px 0;
+  }
+
+  #show-controls {
+    left: auto;
+    right: var(--right);
+    transform: none;
   }
 }
 

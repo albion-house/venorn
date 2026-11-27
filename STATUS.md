@@ -24,6 +24,7 @@ Where venorn stands as of 2026-11-26, what waits on codekiln, and what was discu
 | The game opens on an About screen with Fawnicorn's painting, its title as the artist writes it, a link to the painting's page and the build's version. About, first in the menu, opens it again. The asset set carries a copy of the painting and the title, artist and page | [#45](https://github.com/albion-house/venorn/pull/45) |
 | A selected thing is let go with Done at the top right, a flick on it, or a tap with its wheel open. The design bar lays its settings out in a grid of 44-point cells that show their values, with a slider drawn by the page between a minus and a plus button. The camera pans when the bar opens over the thing | [#46](https://github.com/albion-house/venorn/pull/46) |
 | The game can be added to a home screen or the Dock as an app, with an icon and iPhone launch screens made from the painting, and the menu's last item shows the steps for the browser in use. A service worker keeps the asset set on the device until a new one is published, and the game opens offline. The controls at the top stay clear of the status bar in an iPhone app | [#47](https://github.com/albion-house/venorn/pull/47) |
+| A swipe on the dock or the strip, a menu item or H hides the controls to look at the skull, and a tap brings them back. A speaker button at the top right mutes the sound, and the mute is kept for the next visit | [#50](https://github.com/albion-house/venorn/pull/50) |
 
 Every feature after the pipeline is a first version. codekiln called the ideas behind them tentative.
 
@@ -37,6 +38,7 @@ Every feature after the pipeline is a first version. codekiln called the ideas b
 - The About screen in #45 was checked on the built site with scripted touch in headless Chrome at 402 by 874 and at 874 by 339, with the safe-area insets faked, and with a mouse at 1280 by 800. It has not been tried in the simulator.
 - Letting go and the design bar in #46 were checked with scripted touch in headless Chrome at 402 by 874 and at 874 by 339, with the safe-area insets faked, and with a mouse at 1280 by 800. They have not been tried in the simulator.
 - The app and the service worker in #47 were checked in headless Chrome against the built site: the manifest and its icons load, the second visit asks the server for no file of the asset set, the game opens offline, and a new tag replaces the kept set. The menu's steps were checked with the user agents of six browsers, and the top of the page with a safe-area inset of 62 faked at 402 by 874. Nobody has added the game to a home screen.
+- Hiding the controls and the mute button in #50 were tried by touch in the simulator, in Safari, upright and on its side, and with the keys in a desktop browser.
 - Not checked on any real phone. codekiln listened to the music from #20 and asked for the changes in #36. Nobody has heard #36. The frame rate has not been measured.
 
 ## Waiting on codekiln
@@ -65,6 +67,7 @@ Each has background and a place for an answer in its `design.md`.
 - `openspec/changes/add-about-screen/design.md`: whether the About screen opens on every load or only on a first visit, and whether Start waits until the scene has loaded.
 - `openspec/changes/let-go-and-design-by-touch/design.md`: whether Done belongs at the top right, whether a flick is told from a drag at the right speed, whether a tap on the skull with a wheel open lets go or places a thing, and whether the open design bar takes the strip's place upright.
 - `openspec/changes/add-installable-app/design.md`: whether the menu item stays in the installed app and says it is installed, whether the page reloads by itself when a new asset set arrives, and whether launch screens cover a phone on its side, iPads and older iPhones.
+- `openspec/changes/hide-controls-and-mute/design.md`: whether the controls come back on their own after a while, whether another gesture also hides them, and whether the mute is kept for the next visit.
 - `openspec/changes/add-described-things/design.md`: how a described thing joins the five categories in the dock, how voice input works, where the image comes from, whether a described thing takes its size and criteria from the nearest kind, and whether described things keep the relief models if TRELLIS.2 makes the skull.
 
 ## Discussed and not built

@@ -108,8 +108,12 @@ The dock along the bottom holds the five categories (butterflies, candies, pills
 | Turn the camera | Drag anywhere but the selected thing | Drag with one finger |
 | Zoom | Scroll | Pinch |
 | Pan | Right-drag or Shift+drag | Drag with two fingers |
+| Hide the controls to look at the skull | Press `H`, or Hide the controls in the menu. Press `H` or Escape, or click the scene, to bring them back | Swipe the dock or the strip toward the edge of the screen, or Hide the controls in the menu. Tap the scene, or the arrow where the dock was, to bring them back |
+| Mute | Press `M`, or click the speaker at the top right | Tap the speaker at the top right |
 
-The button in the top left corner opens the menu: About, Front view, Rear view, Arrange as painted, Clear, Painted skull, Sound, and a last item that shows how to add the game as an app in the browser in use. It reads "Add to Home Screen" on a phone, "Add to Dock" in Safari on a Mac and "Install as an app" elsewhere, and it is hidden in the installed app. An app added from Safari, or from Chrome on an iPhone, keeps its own storage, so it starts with a bare skull.
+The button in the top left corner opens the menu: About, Front view, Rear view, Hide the controls, Arrange as painted, Clear, Painted skull, and a last item that shows how to add the game as an app in the browser in use. It reads "Add to Home Screen" on a phone, "Add to Dock" in Safari on a Mac and "Install as an app" elsewhere, and it is hidden in the installed app. An app added from Safari, or from Chrome on an iPhone, keeps its own storage, so it starts with a bare skull.
+
+The speaker at the top right mutes every sound, and the browser remembers it for the next visit.
 
 The browser keeps the decorated skull, its things and its strokes, and puts it back when the page opens again. "Clear" and "Arrange as painted" keep the skull they replace, and "Bring back the last skull" in the menu puts it back. A browser that refuses storage, as a private window can, keeps nothing after the page closes, and the status line says so.
 
