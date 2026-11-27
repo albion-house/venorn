@@ -13,5 +13,5 @@
 
 ## 3. Published site
 
-- [ ] 3.1 Build the pull request with the Pages workflow. Verify: the workflow downloads the new asset set and builds the site.
+- [x] 3.1 Build the pull request with the Pages workflow. Verify: the workflow downloads the new asset set and builds the site. [Run 45917568784](https://github.com/albion-house/venorn/actions/runs/45917568784) unpacked `assets-veneration-ornamentation-20261127-0032` and built the site.
 - [ ] 3.2 Open the About screen on a phone, upright and on its side, after the merge. Verify: codekiln says it reads well and the link opens the painting's page.
