@@ -241,48 +241,152 @@ body:has(#let-go:not([hidden])) #status {
   display: none;
 }
 
-/* The design bar: a row of settings and one slider, above the variations. */
+/* The design bar, above the variations: a grid of settings, each showing its value, and a slider between a minus
+   and a plus button. Every part is at least 44 points each way, the least Apple recommends for a finger, and
+   nothing scrolls sideways. */
 #design {
   position: fixed;
   left: 50%;
   bottom: calc(max(10px, env(safe-area-inset-bottom)) + 138px);
   transform: translateX(-50%);
   width: min(460px, 100vw - 16px);
-  padding: 8px 10px;
+  padding: 6px 8px 8px;
   display: grid;
-  gap: 8px;
+  gap: 6px;
   border-radius: 16px;
   background: var(--panel);
 }
 
-#design .chips {
-  display: flex;
-  gap: 6px;
-  overflow-x: auto;
-  scrollbar-width: none;
-  touch-action: pan-x;
+/* As many settings to a row as fit. Reset and Close end the last row, at its right. */
+#design .settings {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(46px, 1fr));
+  gap: 4px;
 }
 
 #design button {
-  flex: 0 0 auto;
-  padding: 6px 12px;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 2px;
   border: 2px solid transparent;
-  border-radius: 999px;
+  border-radius: 12px;
   background: rgb(255 255 255 / 0.14);
-  font-size: 0.85rem;
+  font-size: 0.8rem;
+  line-height: 1.1;
   cursor: pointer;
+  -webkit-touch-callout: none;
 }
 
+#design .settings button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+}
+
+#design .value {
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  opacity: 0.8;
+}
+
+/* The setting the slider changes. */
 #design button[aria-pressed="true"] {
   border-color: var(--accent);
 }
 
-#design input[type="range"] {
-  width: 100%;
-  height: 28px;
-  margin: 0;
-  accent-color: var(--accent);
+#design button[aria-pressed="true"] .value {
+  opacity: 1;
+}
+
+/* Mirror is a switch, filled while it is on. */
+#design .switch[aria-pressed="true"] {
+  border-color: transparent;
+  background: rgb(233 184 74 / 0.45);
+}
+
+#design .reset {
+  grid-column: -3 / -2;
+}
+
+#design .close {
+  grid-column: -2 / -1;
+  background: rgb(233 184 74 / 0.3);
+}
+
+#design .slide {
+  display: flex;
+  gap: 6px;
+}
+
+#design .step {
+  flex: 0 0 44px;
+  font-size: 1.3rem;
+}
+
+/* The slider takes a press anywhere along its row. The thumb's middle runs from half a thumb in from each end. */
+#design .slider {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  height: 44px;
+  border-radius: 12px;
+  outline: none;
   touch-action: none;
+  cursor: pointer;
+}
+
+#design .slider:focus-visible {
+  box-shadow: 0 0 0 2px var(--accent);
+}
+
+#design .track {
+  position: absolute;
+  left: 14px;
+  right: 14px;
+  top: 50%;
+  height: 8px;
+  margin-top: -4px;
+  border-radius: 4px;
+  background: rgb(255 255 255 / 0.22);
+}
+
+#design .fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: calc(var(--at) * 100%);
+  border-radius: inherit;
+  background: var(--accent);
+}
+
+/* A mark at the setting's default. */
+#design .mark {
+  position: absolute;
+  top: -6px;
+  bottom: -6px;
+  left: calc(var(--default) * 100%);
+  width: 2px;
+  margin-left: -1px;
+  border-radius: 1px;
+  background: var(--ink);
+  opacity: 0.7;
+}
+
+#design .thumb {
+  position: absolute;
+  top: 50%;
+  left: calc(var(--at) * (100% - 28px));
+  width: 28px;
+  height: 28px;
+  margin-top: -14px;
+  border-radius: 50%;
+  background: var(--ink);
+  box-shadow: 0 1px 4px rgb(0 0 0 / 0.5);
+  pointer-events: none;
 }
 
 @media (max-width: 640px) {
@@ -342,7 +446,7 @@ body:has(#let-go:not([hidden])) #status {
   }
 
   /* The design bar opens as a panel at the lower left, in place of the strip, so the middle keeps its full
-     height for the skull and the wheel. Its settings wrap into rows. */
+     height for the skull and the wheel. Its settings stand four to a row. */
   #design {
     left: var(--left);
     bottom: max(10px, env(safe-area-inset-bottom));
@@ -350,10 +454,6 @@ body:has(#let-go:not([hidden])) #status {
     width: 220px;
     max-height: calc(100% - 58px - max(10px, env(safe-area-inset-bottom)));
     overflow-y: auto;
-  }
-
-  #design .chips {
-    flex-wrap: wrap;
   }
 
   /* The panel lets the strip show through, so the strip steps aside while the panel is open. */

@@ -59,10 +59,46 @@ const AROUND = [-90, 0, 90, 180];
 // The ring slides away this fast after a flick, in milliseconds, and fades as it goes.
 const AWAY = 260;
 
+// How far one press of a step button or an arrow key changes each setting in the design bar, and how each
+// setting's value is written under its name.
+const STEP: Record<NumberSetting, number> = {
+  scale: 0.05,
+  spin: 5,
+  hue: 10,
+  standoff: 0.02,
+  tilt: 2,
+  depth: 0.05,
+  conform: 0.02,
+  fold: 2,
+  bend: 0.02,
+};
+const MINUS = "\u2212";
+const written = (value: number, digits: number, plus = false): string =>
+  `${value < 0 ? MINUS : plus && value > 0 ? "+" : ""}${Math.abs(value).toFixed(digits)}`;
+const degrees = (value: number): string => `${written(Math.round(value), 0)}°`;
+const percent = (value: number): string => `${written(Math.round(value * 100), 0)}%`;
+const SHOW: Record<NumberSetting, (value: number) => string> = {
+  scale: (value) => `${written(value, 2)}×`,
+  spin: degrees,
+  hue: (value) => `${written(Math.round(value), 0, true)}°`,
+  standoff: percent,
+  tilt: degrees,
+  depth: (value) => `${written(value, 2)}×`,
+  conform: percent,
+  fold: degrees,
+  bend: (value) => `${written(Math.round(value * 100), 0, true)}%`,
+};
+// The slider's thumb is this wide. A press this near its middle carries it from where it is.
+const THUMB = 28;
+const GRAB = 22;
+// Holding a step button steps again after this many milliseconds, and then every REPEAT_EVERY.
+const REPEAT_AFTER = 400;
+const REPEAT_EVERY = 80;
+
 let shown = -1;
-// The setting the design bar's slider changes, and the slider itself while the bar is open.
+// The setting the design bar's slider changes, and the bar while it is open.
 let active: NumberSetting = "scale";
-let slider: { key: NumberSetting; input: HTMLInputElement } | undefined;
+let bar: { thing: Placed; draw: () => void } | undefined;
 
 export function say(message: string): void {
   status.textContent = message;
@@ -199,7 +235,9 @@ function wheelRoom(): { room: Box; controls: Box[] } {
   const area = safe.getBoundingClientRect();
   const room = { left: area.left, top: Math.max(area.top, ABOVE), right: area.right, bottom: area.bottom };
   if (!sideways.matches) {
-    return { room: { ...room, bottom: Math.min(room.bottom, window.innerHeight - BELOW) }, controls: [] };
+    // The open design bar can stand taller than the room kept below, so the wheel also keeps above it.
+    const open = design.hidden ? Infinity : design.getBoundingClientRect().top;
+    return { room: { ...room, bottom: Math.min(room.bottom, window.innerHeight - BELOW, open) }, controls: [] };
   }
   // The open design panel takes the strip's place.
   const controls = (design.hidden ? [strip, dock] : [design, dock]).map((element) => element.getBoundingClientRect());
@@ -342,75 +380,197 @@ function ranges(thing: Placed): [string, NumberSetting, Range][] {
   return all.filter(([, , range]) => range.max > range.min);
 }
 
-function chip(label: string, act: () => void): HTMLButtonElement {
+/** A button in the design bar's grid, with its name and, under it, a value that changes. */
+function cell(name: string, act: () => void, withValue = true): { button: HTMLButtonElement; value: HTMLElement } {
   const button = document.createElement("button");
   button.type = "button";
-  button.textContent = label;
+  const label = document.createElement("span");
+  label.className = "name";
+  label.textContent = name;
+  const value = document.createElement("span");
+  value.className = "value";
+  button.append(label);
+  if (withValue) button.append(value);
   button.addEventListener("click", act);
-  return button;
+  return { button, value };
+}
+
+function part(className: string): HTMLElement {
+  const element = document.createElement("div");
+  element.className = className;
+  return element;
 }
 
 /**
- * Show the design bar for a thing, or hide it: one chip for each setting its
- * criteria allow, and one slider for the chip that is chosen.
+ * Show the design bar for a thing, or hide it: a grid with a button for each setting its criteria allow, each
+ * showing its value, and under it one slider for the setting that is chosen, between a minus and a plus button.
  */
 export function showDesign(
   thing: Placed | undefined,
   on: { change: () => void; reset: () => void; close: () => void },
 ): void {
   design.replaceChildren();
-  slider = undefined;
+  bar = undefined;
   design.hidden = !thing;
   if (!thing) return;
 
   const allowed = ranges(thing);
-  const chips = document.createElement("div");
-  chips.className = "chips";
-  const input = document.createElement("input");
-  input.type = "range";
-  const pressed = new Map<NumberSetting, HTMLButtonElement>();
-  const choose = (key: NumberSetting): void => {
-    const [label, , range] = allowed.find((entry) => entry[1] === key) ?? allowed[0];
-    active = key;
-    for (const [other, button] of pressed) button.setAttribute("aria-pressed", String(other === key));
-    input.min = String(range.min);
-    input.max = String(range.max);
-    input.step = String((range.max - range.min) / 200);
-    input.value = String(thing.settings[key]);
-    input.setAttribute("aria-label", label);
-    slider = { key, input };
-  };
-  input.addEventListener("input", () => {
-    if (!slider) return;
-    thing.settings[slider.key] = Number(input.value);
+  const grid = part("settings");
+  const cells = new Map<NumberSetting, { button: HTMLButtonElement; value: HTMLElement }>();
+  for (const [name, key] of allowed) {
+    const entry = cell(name, () => {
+      active = key;
+      draw();
+    });
+    cells.set(key, entry);
+    grid.append(entry.button);
+  }
+  const mirror = thing.criteria.adjust.mirror
+    ? cell("Mirror", () => {
+        thing.settings.mirror = !thing.settings.mirror;
+        on.change();
+        draw();
+      })
+    : undefined;
+  if (mirror) {
+    mirror.button.classList.add("switch");
+    grid.append(mirror.button);
+  }
+  // Reset and Close end the last row, at its right, for every thing.
+  const reset = cell("Reset", on.reset, false).button;
+  reset.classList.add("reset");
+  const close = cell("Close", on.close, false).button;
+  close.classList.add("close");
+  grid.append(reset, close);
+
+  const slider = part("slider");
+  slider.setAttribute("role", "slider");
+  slider.tabIndex = 0;
+  const track = part("track");
+  track.append(part("fill"), part("mark"));
+  slider.append(track, part("thumb"));
+
+  const chosen = (): [string, NumberSetting, Range] => allowed.find((entry) => entry[1] === active) ?? allowed[0];
+  const share = (value: number, range: Range): number =>
+    Math.min(1, Math.max(0, (value - range.min) / (range.max - range.min)));
+  const set = (value: number): void => {
+    const [, key, range] = chosen();
+    const next = Number(Math.min(range.max, Math.max(range.min, value)).toFixed(6));
+    if (next === thing.settings[key]) return;
+    thing.settings[key] = next;
     on.change();
+    draw();
+  };
+  // Step by a number of steps, landing on a whole number of steps.
+  const step = (count: number): void => {
+    const [, key] = chosen();
+    const size = STEP[key];
+    const steps = thing.settings[key] / size;
+    set((count > 0 ? Math.floor(steps + 1e-6) + count : Math.ceil(steps - 1e-6) + count) * size);
+  };
+  const stepButton = (text: string, by: number): HTMLButtonElement => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = `step ${by > 0 ? "more" : "less"}`;
+    button.textContent = text;
+    let timer: number | undefined;
+    const stop = (): void => {
+      window.clearTimeout(timer);
+      timer = undefined;
+    };
+    const repeat = (delay: number): void => {
+      timer = window.setTimeout(() => {
+        step(by);
+        repeat(REPEAT_EVERY);
+      }, delay);
+    };
+    button.addEventListener("pointerdown", (event) => {
+      if (event.button !== 0) return;
+      stop();
+      step(by);
+      repeat(REPEAT_AFTER);
+    });
+    for (const type of ["pointerup", "pointerleave", "pointercancel"]) button.addEventListener(type, stop);
+    // Enter or Space on the button steps once. A pointer has stepped already.
+    button.addEventListener("click", (event) => {
+      if (event.detail === 0) step(by);
+    });
+    return button;
+  };
+  const less = stepButton(MINUS, -1);
+  const more = stepButton("+", 1);
+  const row = part("slide");
+  row.append(less, slider, more);
+
+  // A press near the thumb carries it from where it is. A press farther along puts it under the finger.
+  let grab: { pointer: number; offset: number } | undefined;
+  const valueAt = (x: number): number => {
+    const box = slider.getBoundingClientRect();
+    const [, , range] = chosen();
+    return range.min + share(x - box.left - THUMB / 2, { default: 0, min: 0, max: box.width - THUMB }) * (range.max - range.min);
+  };
+  slider.addEventListener("pointerdown", (event) => {
+    if (event.button !== 0) return;
+    const box = slider.getBoundingClientRect();
+    const [, key, range] = chosen();
+    const thumb = box.left + THUMB / 2 + share(thing.settings[key], range) * (box.width - THUMB);
+    grab = { pointer: event.pointerId, offset: Math.abs(event.clientX - thumb) <= GRAB ? event.clientX - thumb : 0 };
+    slider.setPointerCapture(event.pointerId);
+    slider.focus({ preventScroll: true });
+    event.preventDefault();
+    set(valueAt(event.clientX - grab.offset));
+  });
+  slider.addEventListener("pointermove", (event) => {
+    if (grab?.pointer === event.pointerId) set(valueAt(event.clientX - grab.offset));
+  });
+  for (const type of ["pointerup", "pointercancel", "lostpointercapture"]) {
+    slider.addEventListener(type, (event) => {
+      if (grab?.pointer === (event as PointerEvent).pointerId) grab = undefined;
+    });
+  }
+  slider.addEventListener("keydown", (event) => {
+    const [, , range] = chosen();
+    const by: Record<string, number> = { ArrowRight: 1, ArrowUp: 1, ArrowLeft: -1, ArrowDown: -1, PageUp: 10, PageDown: -10 };
+    if (event.key in by) step(by[event.key]);
+    else if (event.key === "Home") set(range.min);
+    else if (event.key === "End") set(range.max);
+    else return;
+    event.preventDefault();
   });
 
-  for (const [label, key] of allowed) {
-    const button = chip(label, () => choose(key));
-    pressed.set(key, button);
-    chips.append(button);
+  function draw(): void {
+    if (!thing) return;
+    const [name, key, range] = chosen();
+    for (const [other, entry] of cells) {
+      entry.button.setAttribute("aria-pressed", String(other === key));
+      entry.value.textContent = SHOW[other](thing.settings[other]);
+    }
+    if (mirror) {
+      mirror.button.setAttribute("aria-pressed", String(thing.settings.mirror));
+      mirror.value.textContent = thing.settings.mirror ? "on" : "off";
+    }
+    const value = thing.settings[key];
+    slider.style.setProperty("--at", String(share(value, range)));
+    slider.style.setProperty("--default", String(share(range.default, range)));
+    slider.setAttribute("aria-label", name);
+    slider.setAttribute("aria-valuemin", String(range.min));
+    slider.setAttribute("aria-valuemax", String(range.max));
+    slider.setAttribute("aria-valuenow", String(value));
+    slider.setAttribute("aria-valuetext", SHOW[key](value));
+    less.setAttribute("aria-label", `${name} down`);
+    more.setAttribute("aria-label", `${name} up`);
   }
-  if (thing.criteria.adjust.mirror) {
-    const mirror = chip("Mirror", () => {
-      thing.settings.mirror = !thing.settings.mirror;
-      mirror.setAttribute("aria-pressed", String(thing.settings.mirror));
-      on.change();
-    });
-    mirror.setAttribute("aria-pressed", String(thing.settings.mirror));
-    mirror.dataset.switch = "mirror";
-    chips.append(mirror);
-  }
-  chips.append(chip("Reset", on.reset), chip("Done", on.close));
-  design.append(chips, input);
+
+  design.append(grid, row);
   // The bar opens on the setting the player last changed, if this thing has it.
-  choose(allowed.some((entry) => entry[1] === active) ? active : allowed[0][1]);
+  if (!allowed.some((entry) => entry[1] === active)) active = allowed[0][1];
+  bar = { thing, draw };
+  draw();
 }
 
-/** Move the slider to the thing's settings after a gesture or a key changed them. */
+/** Show the thing's settings in the design bar after a gesture, a key or Reset changed them. */
 export function refreshDesign(thing: Placed): void {
-  if (slider) slider.input.value = String(thing.settings[slider.key]);
-  design.querySelector("[data-switch=mirror]")?.setAttribute("aria-pressed", String(thing.settings.mirror));
+  if (bar?.thing === thing) bar.draw();
 }
 
 /** The button that opens and closes the menu of views and switches. */

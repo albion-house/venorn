@@ -699,7 +699,8 @@ function watchKeys(): void {
     }
     if (event.metaKey || event.ctrlKey) return;
     // A slider that has the keyboard keeps its arrow keys.
-    if (event.target instanceof HTMLInputElement && event.key.startsWith("Arrow")) return;
+    const slider = event.target instanceof HTMLElement && event.target.getAttribute("role") === "slider";
+    if ((slider || event.target instanceof HTMLInputElement) && event.key.startsWith("Arrow")) return;
     const digit = Number(event.key);
     if (Number.isInteger(digit) && digit >= 1 && event.key.length === 1) chooseCategory(digit - 1);
     else if (event.key === "ArrowRight") stepVariation(1);
