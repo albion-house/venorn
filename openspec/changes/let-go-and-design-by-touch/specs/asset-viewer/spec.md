@@ -67,6 +67,15 @@ Every control in the design bar SHALL be at least 44 by 44 points. On a phone 40
 - **WHEN** a person on a phone on its side opens the design bar on a pinned butterfly
 - **THEN** the same controls are all in view in the panel at the lower left, each at least 44 by 44 points
 
+### Requirement: Selected thing clear of the open design bar
+
+When the design bar opens over the selected thing, the camera SHALL pan until the thing is in view clear of the bar. The bar SHALL stay where it stands.
+
+#### Scenario: Thing on the jaw
+
+- **WHEN** a person on a phone held upright opens the design bar on a butterfly on the jaw, in the front view
+- **THEN** the butterfly and its ring are above the bar
+
 ### Requirement: Design bar shows each value
 
 Each setting in the design bar SHALL show its current value, and the value SHALL follow every change from the slider, the step buttons, a gesture or a key.

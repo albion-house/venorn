@@ -43,7 +43,7 @@ Other ways that were weighed:
 
 ### The design bar in rows
 
-The settings stand in a grid of cells at least 46 points wide and 44 tall, as many to a row as fit: seven upright on a 402-point phone, eight on a computer, four in the panel on a phone's side. A butterfly's eight settings, Mirror, Reset and Close take two rows upright and three rows on its side. Reset and Close end the last row, at its right, so they are in the same place for every thing. Nothing scrolls sideways.
+The settings stand in a grid of cells at least 46 points wide and 44 tall, as many to a row as fit: seven upright on a 402-point phone, four in the panel on a phone's side, and twelve on a computer, where the bar may be as wide as 660 pixels. A butterfly's eight settings, Mirror, Reset and Close take two rows upright, three on a phone's side and one on a computer. Reset and Close end the last row, at its right, so they are in the same place for every thing. Nothing scrolls sideways.
 
 Each setting shows its value under its name: size and depth as a multiple, turn, tilt, fold and color in degrees, lift and bend as a share of the thing's size, wrap as a share of a full wrap, and Mirror as on or off. The chosen setting has a gold edge, and the values change as the slider, a key, a pinch or a twist changes them.
 
@@ -61,11 +61,16 @@ The bar's own Done is now Close. It closes the bar and keeps the thing selected.
 
 ### Room for the taller bar
 
-Upright the bar is about 150 points tall, under a fifth of an 874-point screen. Its bottom stays where it was, above the strip, so it grows upward by about 65 points. The wheel kept 230 points at the bottom for the bars. It now also keeps above the open design bar, so its buttons do not stand on the bar.
+Upright the bar is 156 points tall, under a fifth of an 874-point screen. Its bottom stays where it was, above the strip, so it grows upward by 73 points, and in the front view it reaches the bottom of the jaw. On a phone's side it is 204 points tall in its panel, and on a computer 108 pixels.
+
+The wheel kept 230 points at the bottom for the bars. It now also keeps above the open design bar, so its buttons do not stand on the bar. With the 34-point inset at the bottom of a phone, the old bar already reached past those 230 points, and wheel buttons stood on it.
+
+When the bar opens over the selected thing, the camera pans a short way until the thing's ring is 12 points clear of it, over about a quarter of a second. Upright that raises a thing on the jaw by up to 70 points. On a phone's side, where the bar is a panel at the lower left, the thing goes to the right of the panel when that is the shorter way. The camera stays where the pan left it when the bar closes. Panning keeps the bar where it stands, as the brief asks, and keeps the rule from `add-decoration-play` that the design bar leaves the selected thing in view.
 
 ## Risks / Trade-offs
 
-- Upright, the open design bar reaches up to the bottom of the jaw in the front view. With the 34-point inset at the bottom of a phone, it covers about the lowest 40 points of the jaw. A thing pinned there can be behind the open bar.
+- Opening the design bar on a thing low on the skull pans the camera without the person asking. Other things low on the skull can then be behind the bar.
+- The bar's top is higher than before, so the wheel has less room below the thing, and opening the bar can stand the wheel's buttons in an arc above and beside the thing in place of their usual cross.
 - With the wheel open, placing a thing on the skull takes two taps: one to let go and one to place.
 - A fast, short drag of the selected thing that ends while the finger is still going fast counts as a flick, and the thing goes back.
 - On a phone's side the slider is 104 points wide in the 220-point panel, so the same drag changes the value more there. The minus and plus buttons make the fine changes.
@@ -107,6 +112,6 @@ No. codekiln's brief for #42 keeps the bars where they stand and changes the des
 
 > Context from the drafting agent, for question 5.
 >
-> The bar would then stand about 60 points lower and clear the jaw in the front view. The strip would hide while the bar is open, so choosing a variation would mean closing the bar first. This change keeps the bars where they stand.
+> The bar would then stand about 60 points lower and clear the jaw in the front view, and the camera would rarely need to pan when it opens. The strip would hide while the bar is open, so choosing a variation would mean closing the bar first. This change keeps the bars where they stand.
 
 <ANSWER_HERE>
