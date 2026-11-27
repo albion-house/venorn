@@ -27,7 +27,8 @@ export function showAbout(manifest: Manifest, assets: string, onStart: () => voi
   if (manifest.page) {
     const host = new URL(manifest.page).host;
     const arrow = document.createElement("span");
-    arrow.textContent = " ↗";
+    // U+FE0E asks for the plain text arrow. Without it iOS draws the arrow as an emoji in a blue box.
+    arrow.textContent = " \u2197\uFE0E";
     arrow.setAttribute("aria-hidden", "true");
     page.href = manifest.page;
     page.replaceChildren(`See the original at ${host}`, arrow);
