@@ -249,7 +249,8 @@ body:has(#let-go:not([hidden])) #status {
   left: 50%;
   bottom: calc(max(10px, env(safe-area-inset-bottom)) + 138px);
   transform: translateX(-50%);
-  width: min(460px, 100vw - 16px);
+  /* Wide enough on a computer for a butterfly's settings, Reset and Close in one row. */
+  width: min(660px, 100vw - 16px);
   padding: 6px 8px 8px;
   display: grid;
   gap: 6px;
