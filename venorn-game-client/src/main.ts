@@ -332,6 +332,7 @@ function select(thing: Placed | undefined, openWheel = false): void {
   wheelOpen = !!thing && openWheel;
   if (!thing) designOpen = false;
   showDesign();
+  ui.showLetGo(!!thing);
   if (!thing) {
     if (before) say(hint());
     return;
@@ -809,6 +810,7 @@ async function start(): Promise<void> {
   ui.buildDock(categories, chooseCategory);
   show(0);
   ui.watchMenu();
+  ui.onLetGo(() => select(undefined));
   ui.onWheel((action) => {
     if (!selected) return;
     // Kind steps through the categories of things and passes over the pen.
@@ -828,7 +830,11 @@ async function start(): Promise<void> {
     selected: () => selected,
     selectedOnScreen: () => onScreen,
     press: (thing) => select(thing, true),
-    deselect: () => select(undefined),
+    wheelShown: () => wheelOpen && !!onScreen,
+    deselect: (away) => {
+      if (away && onScreen) ui.sendAway(onScreen, away);
+      select(undefined);
+    },
     place,
     move: (thing, hit) => {
       thing.point.copy(hit.point);

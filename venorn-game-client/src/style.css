@@ -80,6 +80,26 @@ label {
   cursor: pointer;
 }
 
+/* While a thing is selected, Done at the top right lets go of it. It is level with the menu button. */
+#let-go {
+  position: fixed;
+  top: 8px;
+  right: var(--right);
+  min-width: 64px;
+  height: 44px;
+  padding: 0 16px;
+  border: 2px solid var(--accent);
+  border-radius: 999px;
+  background: var(--panel);
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+
+/* The status line stops short of Done. */
+body:has(#let-go:not([hidden])) #status {
+  right: calc(var(--right) + 74px);
+}
+
 #status {
   position: fixed;
   top: 10px;
@@ -202,8 +222,9 @@ label {
   pointer-events: auto;
 }
 
-/* A dashed circle marks the selected thing. */
-#ring {
+/* A dashed circle marks the selected thing. After a flick a copy of it slides away and fades. */
+#ring,
+.ring-away {
   position: fixed;
   left: 0;
   top: 0;
@@ -215,7 +236,8 @@ label {
 #wheel[hidden],
 #ring[hidden],
 #design[hidden],
-#menu[hidden] {
+#menu[hidden],
+#let-go[hidden] {
   display: none;
 }
 

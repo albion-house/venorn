@@ -1,6 +1,6 @@
 // Tells apart the ways a person touches the scene: a tap, a drag on a thing,
-// two fingers on a thing, a scroll over a thing, and everything else, which
-// moves the camera.
+// a flick on a thing, two fingers on a thing, a scroll over a thing, and
+// everything else, which moves the camera.
 
 import type * as THREE from "three";
 import type { Placed } from "./placement";
@@ -19,7 +19,10 @@ export interface Scene {
   selectedOnScreen(): { x: number; y: number; radius: number } | undefined;
   /** A thing was tapped: select it and open its wheel. */
   press(thing: Placed): void;
-  deselect(): void;
+  /** Whether the selected thing's wheel is open and in view. */
+  wheelShown(): boolean;
+  /** Let go of the selected thing. A flick sends its ring away by some pixels across and down. */
+  deselect(away?: { x: number; y: number }): void;
   place(hit: Hit): void;
   move(thing: Placed, hit: Hit): void;
   /** Multiply the thing's size, or turn it by some degrees, within what its criteria allow. */
@@ -52,6 +55,16 @@ const REACH = 110;
 // of the first, before the first has gone this many pixels. The stroke was only the start of a zoom.
 const ZOOM_START_TIME = 500;
 const ZOOM_START_SLOP = 20;
+// A drag on the selected thing is a flick, which lets the thing go, when the finger has gone at least
+// FLICK_SLOP pixels within FLICK_TIME milliseconds and lifts going at least FLICK_SPEED pixels a millisecond,
+// measured over its last FLICK_WINDOW milliseconds. A person carrying a thing slows down where they aim.
+const FLICK_SLOP = 30;
+const FLICK_TIME = 300;
+const FLICK_SPEED = 0.6;
+const FLICK_WINDOW = 80;
+// The ring slides this many milliseconds' worth of the flick's speed before it fades, at most FLICK_THROW pixels.
+const FLICK_GLIDE = 120;
+const FLICK_THROW = 160;
 
 interface Spread {
   distance: number;
@@ -60,6 +73,31 @@ interface Spread {
 
 function spread(a: { x: number; y: number }, b: { x: number; y: number }): Spread {
   return { distance: Math.hypot(b.x - a.x, b.y - a.y), angle: Math.atan2(b.y - a.y, b.x - a.x) };
+}
+
+interface Sample {
+  x: number;
+  y: number;
+  time: number;
+}
+
+/**
+ * How fast a drag was going when the finger lifted, in pixels a millisecond across and down, if it was a flick:
+ * far enough, soon enough and fast enough at the end.
+ */
+function flick(path: Sample[]): { x: number; y: number } | undefined {
+  const first = path[0];
+  const last = path[path.length - 1];
+  if (!first || path.length < 2) return undefined;
+  if (last.time - first.time > FLICK_TIME) return undefined;
+  if (Math.hypot(last.x - first.x, last.y - first.y) < FLICK_SLOP) return undefined;
+  // The last sample from before the window, or the first one there is.
+  let from = path.length - 2;
+  while (from > 0 && last.time - path[from].time < FLICK_WINDOW) from--;
+  const start = path[from];
+  const time = Math.max(last.time - start.time, 1);
+  const velocity = { x: (last.x - start.x) / time, y: (last.y - start.y) / time };
+  return Math.hypot(velocity.x, velocity.y) >= FLICK_SPEED ? velocity : undefined;
 }
 
 export function watchGestures(scene: Scene): void {
@@ -71,6 +109,9 @@ export function watchGestures(scene: Scene): void {
   let mode: "camera" | "move" | "shape" | "paint" = "camera";
   let moved = false;
   let last: Spread | undefined;
+  // Where a drag on the selected thing has been, and where the thing was when it began, so a flick can put it back.
+  let path: Sample[] = [];
+  let from: Hit | undefined;
 
   const reaches = (x: number, y: number): boolean => {
     const at = scene.selectedOnScreen();
@@ -108,9 +149,11 @@ export function watchGestures(scene: Scene): void {
         };
         moved = false;
         if (event.button === 0 && down.thing && down.thing === scene.selected()) {
-          // Dragging the selected thing moves it. Dragging anything else moves the camera,
-          // so a skull covered in things can still be turned.
+          // Dragging the selected thing carries it, and a flick lets it go. Dragging anything else turns the
+          // camera, so a skull covered in things can still be turned.
           mode = "move";
+          path = [{ x: event.clientX, y: event.clientY, time: event.timeStamp }];
+          from = { point: down.thing.point.clone(), normal: down.thing.normal.clone() };
           scene.cameraEnabled(false);
           canvas.setPointerCapture(event.pointerId);
         }
@@ -157,6 +200,7 @@ export function watchGestures(scene: Scene): void {
         if (hit) scene.strokeDraw(hit);
         else scene.strokeLift();
       } else if (mode === "move" && down?.thing && pointers.size === 1) {
+        path.push({ x: pointer.x, y: pointer.y, time: event.timeStamp });
         const hit = scene.surfaceAt(pointer.x, pointer.y);
         if (hit) scene.move(down.thing, hit);
       } else if (mode === "shape" && pointers.size >= 2 && last) {
@@ -179,16 +223,29 @@ export function watchGestures(scene: Scene): void {
     pointers.delete(event.pointerId);
     if (pointers.size > 0) return;
     const tapped = down && !moved && event.type === "pointerup";
+    const flung =
+      mode === "move" && moved && event.type === "pointerup"
+        ? flick([...path, { x: event.clientX, y: event.clientY, time: event.timeStamp }])
+        : undefined;
     if (mode === "paint") scene.strokeEnd();
-    else if (tapped && down && scene.painting()) {
+    else if (flung && down?.thing && from) {
+      // A flick sends the selection away. The thing goes back where the finger found it.
+      scene.move(down.thing, from);
+      const glide = (length: number): number => Math.max(-FLICK_THROW, Math.min(FLICK_THROW, length * FLICK_GLIDE));
+      scene.deselect({ x: glide(flung.x), y: glide(flung.y) });
+    } else if (tapped && down && scene.painting()) {
       // With a pen chosen, a tap off the structure does nothing.
     } else if (tapped && down) {
       if (down.button === 2) {
         if (down.thing) scene.remove(down.thing);
       } else if (down.button === 0 && down.thing) {
-        scene.press(down.thing);
+        // A second tap on the selected thing closes its wheel and lets it go.
+        if (down.thing === scene.selected() && scene.wheelShown()) scene.deselect();
+        else scene.press(down.thing);
       } else if (down.button === 0) {
-        const hit = scene.surfaceAt(down.x, down.y);
+        // With a wheel open, a tap on the bare structure closes it and lets the thing go, as a tap beside a menu
+        // closes the menu. With only the ring, as after placing, it places the next thing.
+        const hit = scene.wheelShown() ? undefined : scene.surfaceAt(down.x, down.y);
         if (hit) scene.place(hit);
         else scene.deselect();
       }
@@ -196,6 +253,8 @@ export function watchGestures(scene: Scene): void {
     mode = "camera";
     down = undefined;
     last = undefined;
+    path = [];
+    from = undefined;
     scene.cameraEnabled(true);
     scene.cameraTurns(true);
     scene.shaping(false);

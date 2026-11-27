@@ -34,6 +34,7 @@ const design = document.querySelector<HTMLElement>("#design")!;
 const status = document.querySelector<HTMLElement>("#status")!;
 const more = document.querySelector<HTMLElement>("#more")!;
 const menu = document.querySelector<HTMLElement>("#menu")!;
+const letGo = document.querySelector<HTMLElement>("#let-go")!;
 // An empty box over the screen's safe area, which leaves out a notch, an island and rounded corners.
 const safe = document.querySelector<HTMLElement>("#safe")!;
 // A wide, short window, such as a phone on its side. The stylesheet puts the strip and the dock at the sides
@@ -54,6 +55,9 @@ const BELOW = 230;
 // The wheel's buttons in order around it, clockwise, and the angles they take when there is room all around.
 const WHEEL_ORDER: WheelAction[] = ["kind", "variation", "design", "remove"];
 const AROUND = [-90, 0, 90, 180];
+
+// The ring slides away this fast after a flick, in milliseconds, and fades as it goes.
+const AWAY = 260;
 
 let shown = -1;
 // The setting the design bar's slider changes, and the slider itself while the bar is open.
@@ -138,6 +142,28 @@ export function onWheel(act: (action: WheelAction) => void): void {
   for (const button of wheel.querySelectorAll("button")) {
     button.addEventListener("click", () => act(button.dataset.action as WheelAction));
   }
+}
+
+/** Show the button that lets go of the selected thing while one is selected. */
+export function showLetGo(on: boolean): void {
+  letGo.hidden = !on;
+}
+
+export function onLetGo(act: () => void): void {
+  letGo.addEventListener("click", act);
+}
+
+/** After a flick, slide a copy of the ring off by some pixels and fade it out. */
+export function sendAway(at: OnScreen, by: { x: number; y: number }): void {
+  const ghost = document.createElement("div");
+  ghost.className = "ring-away";
+  ghost.style.width = ghost.style.height = `${at.radius * 2}px`;
+  document.body.append(ghost);
+  const from = `translate(${at.x - at.radius}px, ${at.y - at.radius}px)`;
+  const to = `translate(${at.x - at.radius + by.x}px, ${at.y - at.radius + by.y}px) scale(0.6)`;
+  ghost
+    .animate([{ transform: from, opacity: 1 }, { transform: to, opacity: 0 }], { duration: AWAY, easing: "ease-out" })
+    .finished.finally(() => ghost.remove());
 }
 
 /** Draw the ring around the selected thing, and the wheel around it when the wheel is open. */
