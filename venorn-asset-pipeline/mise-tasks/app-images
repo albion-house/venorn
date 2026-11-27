@@ -1,0 +1,130 @@
+#!/usr/bin/env -S uv run --quiet --script
+# [MISE] description="Make the game's app icons and iPhone launch screens from the source painting"
+# [MISE] dir="{{config_root}}"
+# /// script
+# requires-python = ">=3.13"
+# dependencies = ["pillow>=11"]
+# ///
+"""Make the pictures that show when the game is added to a home screen or the Dock.
+
+The icons are a square of the painting itself, and each launch screen shows the whole painting on a
+background in the colors of its top and bottom edges. They are written to venorn-game-client/public/app/,
+and git keeps them, so the site's build does not need Python. Run this again when the painting changes.
+"""
+
+from __future__ import annotations
+
+import hashlib
+import tomllib
+import urllib.request
+from pathlib import Path
+
+from PIL import Image
+
+SOURCE = "veneration-ornamentation"
+OUT = Path("../venorn-game-client/public/app")
+
+# The square of the painting the icons show, as left, top and side in the painting's pixels. The checksum in
+# source.toml fixes the image, so these stay right. It holds the whole skull, most of the horn, a strip of the
+# pink sky above the forest and the tops of the meadow's flowers.
+ICON = (0, 300, 1086)
+# Android may cut a maskable icon down to a circle 80% of its width. This square sits a little lower, so the
+# circle holds the eye socket, the lower horn and more of the jaw.
+MASKABLE = (0, 340, 1086)
+
+# iPhone screens in points, upright, and their scale. iOS shows a launch screen only when one matches the
+# screen exactly. The pixel sizes are the ones App Store Connect lists for screenshots of these iPhones.
+LAUNCH = [
+    (402, 874, 3),  # iPhone 17, 17 Pro, 16 Pro
+    (440, 956, 3),  # iPhone 17 Pro Max, 16 Pro Max
+    (420, 912, 3),  # iPhone Air
+    (393, 852, 3),  # iPhone 16, 15, 15 Pro, 14 Pro
+    (430, 932, 3),  # iPhone 16 Plus, 15 Plus, 15 Pro Max, 14 Pro Max
+    (390, 844, 3),  # iPhone 17e, 16e, 14, 13, 13 Pro, 12, 12 Pro
+    (428, 926, 3),  # iPhone 14 Plus, 13 Pro Max, 12 Pro Max
+]
+# The painting's width on a launch screen, as a share of the screen's width.
+LAUNCH_WIDTH = 0.86
+
+
+def painting() -> Image.Image:
+    """The source image, downloaded into the pipeline's cache if it is not there, and checked."""
+    source = tomllib.loads(Path(f"sources/{SOURCE}/source.toml").read_text())["image"]
+    path = Path(f".cache/sources/{SOURCE}/image.jpg")
+    data = path.read_bytes() if path.exists() else b""
+    if hashlib.sha256(data).hexdigest() != source["sha256"]:
+        request = urllib.request.Request(source["url"], headers={"User-Agent": "venorn-assets"})
+        with urllib.request.urlopen(request, timeout=60) as response:
+            data = response.read()
+        digest = hashlib.sha256(data).hexdigest()
+        if digest != source["sha256"]:
+            raise SystemExit(f"{source['url']} has sha256 {digest}, but source.toml records {source['sha256']}.")
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(data)
+    image = Image.open(path)
+    image.load()
+    return image.convert("RGB")
+
+
+def square(image: Image.Image, crop: tuple[int, int, int], size: int) -> Image.Image:
+    left, top, side = crop
+    return image.crop((left, top, left + side, top + side)).resize((size, size), Image.Resampling.LANCZOS)
+
+
+def save_png(image: Image.Image, name: str) -> None:
+    # 256 colors with dithering keep the painting's look at a third of the file's size.
+    image.quantize(256, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.FLOYDSTEINBERG).save(
+        OUT / name, optimize=True
+    )
+
+
+def edge_color(image: Image.Image, top: bool) -> tuple[int, int, int]:
+    """The mean color of the painting's top or bottom 40 rows."""
+    width, height = image.size
+    band = image.crop((0, 0, width, 40) if top else (0, height - 40, width, height))
+    return band.resize((1, 1), Image.Resampling.BOX).getpixel((0, 0))
+
+
+def launch_screen(image: Image.Image, width: int, height: int) -> Image.Image:
+    """The whole painting in the middle of the screen. Above it the background takes the color of the
+    painting's top edge, below it the color of its bottom edge, and the two meet in a gradient behind it."""
+    top, bottom = edge_color(image, True), edge_color(image, False)
+    fitted_width = round(width * LAUNCH_WIDTH)
+    fitted_height = round(image.height * fitted_width / image.width)
+    left, upper = (width - fitted_width) // 2, (height - fitted_height) // 2
+    gradient = Image.linear_gradient("L").resize((1, fitted_height))
+    column = Image.new("L", (1, height), 0)
+    column.paste(255, (0, upper + fitted_height, 1, height))
+    column.paste(gradient, (0, upper))
+    background = Image.composite(Image.new("RGB", (1, height), bottom), Image.new("RGB", (1, height), top), column)
+    screen = background.resize((width, height))
+    screen.paste(image.resize((fitted_width, fitted_height), Image.Resampling.LANCZOS), (left, upper))
+    return screen
+
+
+def main() -> None:
+    image = painting()
+    OUT.mkdir(parents=True, exist_ok=True)
+    save_png(square(image, ICON, 192), "icon-192.png")
+    save_png(square(image, ICON, 512), "icon-512.png")
+    save_png(square(image, MASKABLE, 512), "icon-maskable-512.png")
+    # iOS fills a transparent part of the icon with black, so the icon is opaque.
+    save_png(square(image, ICON, 180), "apple-touch-icon.png")
+    links = []
+    for points_wide, points_high, scale in LAUNCH:
+        name = f"launch-{points_wide * scale}x{points_high * scale}.jpg"
+        screen = launch_screen(image, points_wide * scale, points_high * scale)
+        screen.save(OUT / name, quality=72, optimize=True, progressive=True)
+        links.append(
+            f'<link rel="apple-touch-startup-image" media="(device-width: {points_wide}px) and '
+            f"(device-height: {points_high}px) and (-webkit-device-pixel-ratio: {scale}) and "
+            f'(orientation: portrait)" href="/app/{name}" />'
+        )
+    for path in sorted(OUT.iterdir()):
+        print(f"{path.stat().st_size // 1024:>5} KB  {path.name}")
+    print("The launch screens' links for index.html:")
+    print("\n".join(links))
+
+
+if __name__ == "__main__":
+    main()
