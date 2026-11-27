@@ -34,6 +34,11 @@ const design = document.querySelector<HTMLElement>("#design")!;
 const status = document.querySelector<HTMLElement>("#status")!;
 const more = document.querySelector<HTMLElement>("#more")!;
 const menu = document.querySelector<HTMLElement>("#menu")!;
+// An empty box over the screen's safe area, which leaves out a notch, an island and rounded corners.
+const safe = document.querySelector<HTMLElement>("#safe")!;
+// A wide, short window, such as a phone on its side. The stylesheet puts the strip and the dock at the sides
+// there. This is the same test as the stylesheet's.
+const sideways = window.matchMedia("(orientation: landscape) and (max-height: 500px)");
 
 // The wheel's buttons sit this far from the thing's middle, at the least and at the most. Where they do
 // not fit on the screen at the most, they may go as far as the last number.
@@ -42,7 +47,8 @@ const REACH = [78, 130, 180];
 const BUTTON = 62;
 const BETWEEN = 6;
 const MARGIN = 5;
-// Room the wheel leaves for the status line above and the dock, strip and design bar below.
+// Room the wheel leaves for the status line and the menu button above, and for the dock, strip and design bar
+// below when they stand at the bottom.
 const ABOVE = 50;
 const BELOW = 230;
 // The wheel's buttons in order around it, clockwise, and the angles they take when there is room all around.
@@ -151,51 +157,144 @@ export function placeSelection(at: OnScreen | undefined, open: boolean): void {
   }
 }
 
+interface Box {
+  left: number;
+  top: number;
+  right: number;
+  bottom: number;
+}
+
+/**
+ * Where the wheel's buttons may stand: inside a room, and clear of the controls in it. The room is the
+ * safe area below the status line. When the dock, the strip and the design bar stand at the bottom, the room
+ * ends above them. On a wide, short window they stand at the sides, and the wheel keeps clear of each one.
+ */
+function wheelRoom(): { room: Box; controls: Box[] } {
+  const area = safe.getBoundingClientRect();
+  const room = { left: area.left, top: Math.max(area.top, ABOVE), right: area.right, bottom: area.bottom };
+  if (!sideways.matches) {
+    return { room: { ...room, bottom: Math.min(room.bottom, window.innerHeight - BELOW) }, controls: [] };
+  }
+  // The open design panel takes the strip's place.
+  const controls = (design.hidden ? [strip, dock] : [design, dock]).map((element) => element.getBoundingClientRect());
+  return { room, controls };
+}
+
 /**
  * Where the wheel's buttons go. They stand around the thing's middle, clear of the thing, so a finger
  * on the thing reaches the thing. Near an edge of the screen they gather on the side that has room,
- * in the same order. Angles are in degrees, clockwise from the right.
+ * in the same order. Where no one side has room for all four, two stand on each of two sides.
+ * Angles are in degrees, clockwise from the right.
  */
 export function layWheel(at: OnScreen): { x: number; y: number; reach: number; angles: number[] } {
-  const room = BUTTON / 2 + MARGIN;
+  const { room, controls } = wheelRoom();
+  const half = BUTTON / 2 + MARGIN;
   const fits = (x: number, y: number): boolean =>
-    x >= room && x <= window.innerWidth - room && y >= ABOVE + room && y <= window.innerHeight - BELOW - room;
-  const fitsAt = (reach: number, angle: number): boolean => {
+    x - half >= room.left &&
+    x + half <= room.right &&
+    y - half >= room.top &&
+    y + half <= room.bottom &&
+    controls.every(
+      (box) => x + half <= box.left || x - half >= box.right || y + half <= box.top || y - half >= box.bottom,
+    );
+  const fitsFrom = (x: number, y: number, reach: number, angle: number): boolean => {
     const radians = (angle * Math.PI) / 180;
-    return fits(at.x + reach * Math.cos(radians), at.y + reach * Math.sin(radians));
+    return fits(x + reach * Math.cos(radians), y + reach * Math.sin(radians));
   };
+  const fitsAt = (reach: number, angle: number): boolean => fitsFrom(at.x, at.y, reach, angle);
   const step = 3;
   const first = Math.min(REACH[1], Math.max(REACH[0], at.radius + 44));
-  for (let reach = first; reach <= REACH[2]; reach += 6) {
-    if (AROUND.every((angle) => fitsAt(reach, angle))) return { x: at.x, y: at.y, reach, angles: AROUND };
-    // The longest run of angles at which a button is whole on the screen, going clockwise.
+  const reaches: number[] = [];
+  for (let reach = first; reach <= REACH[2]; reach += 6) reaches.push(reach);
+  // Neighboring buttons need this many degrees between them so that they do not touch.
+  const least = (reach: number): number =>
+    (2 * Math.asin(Math.min(1, (BUTTON + BETWEEN) / (2 * reach))) * 180) / Math.PI;
+  // The runs of angles at which a button is whole on the screen, going clockwise, longest first.
+  const arcs = (reach: number): { start: number; length: number }[] => {
     const free = Array.from({ length: 360 / step }, (_, i) => fitsAt(reach, i * step));
-    let best = { start: 0, length: -1 };
+    const runs: { start: number; length: number }[] = [];
     for (let i = 0; i < free.length; i++) {
       if (!free[i] || free[(i - 1 + free.length) % free.length]) continue;
       let count = 0;
       while (count < free.length && free[(i + count) % free.length]) count++;
-      if (count > best.length) best = { start: i * step, length: (count - 1) * step };
+      runs.push({ start: i * step, length: (count - 1) * step });
     }
-    // Neighboring buttons need this many degrees between them so that they do not touch.
-    const least = (2 * Math.asin(Math.min(1, (BUTTON + BETWEEN) / (2 * reach))) * 180) / Math.PI;
+    return runs.sort((a, b) => b.length - a.length);
+  };
+
+  for (const reach of reaches) {
+    if (AROUND.every((angle) => fitsAt(reach, angle))) return { x: at.x, y: at.y, reach, angles: AROUND };
+    // All four along the longest arc, spread evenly.
+    const best = arcs(reach)[0] ?? { start: 0, length: -1 };
     const spacing = Math.min(90, best.length / 3);
-    if (spacing >= least) {
+    if (spacing >= least(reach)) {
       const start = best.start + (best.length - spacing * 3) / 2;
       return { x: at.x, y: at.y, reach, angles: AROUND.map((_, i) => start + i * spacing) };
     }
   }
-  // In a corner with no room around the thing, the wheel shifts inward as a whole and stays on the screen.
-  const reach = first;
-  const edge = reach + room;
+  // In a band too short for an arc of four, such as a phone on its side, the buttons split between the two
+  // longest arcs, two in each or three and one, in the same order clockwise.
+  for (const reach of reaches) {
+    const angles = splitWheel(arcs(reach), least(reach));
+    if (angles) return { x: at.x, y: at.y, reach, angles };
+  }
+  // In a corner with no room around the thing, the wheel shifts inward as a whole and stays on the screen. Where
+  // the controls stand at the sides, it goes to the nearest place at which all four buttons are clear of them.
+  // In a short room it draws its buttons in, so that it fits between the room's top and bottom.
+  const reach = Math.min(first, Math.max(REACH[0], (room.bottom - room.top) / 2 - half));
+  const edge = reach + half;
   const within = (value: number, low: number, high: number): number =>
     low > high ? (low + high) / 2 : Math.min(high, Math.max(low, value));
-  return {
-    x: within(at.x, edge, window.innerWidth - edge),
-    y: within(at.y, edge + ABOVE, window.innerHeight - edge - BELOW),
-    reach,
-    angles: AROUND,
+  const whole = (x: number, y: number): boolean => AROUND.every((angle) => fitsFrom(x, y, reach, angle));
+  let middle = {
+    x: within(at.x, room.left + edge, room.right - edge),
+    y: within(at.y, room.top + edge, room.bottom - edge),
   };
+  if (!whole(middle.x, middle.y)) {
+    let nearest = Infinity;
+    for (let x = room.left + edge; x <= room.right - edge; x += 6) {
+      for (let y = room.top + edge; y <= room.bottom - edge; y += 6) {
+        const away = Math.hypot(x - at.x, y - at.y);
+        if (away < nearest && whole(x, y)) {
+          nearest = away;
+          middle = { x, y };
+        }
+      }
+    }
+  }
+  return { ...middle, reach, angles: AROUND };
+}
+
+/**
+ * Four angles in two arcs, at least `least` degrees apart all the way around, or nothing if the arcs are too
+ * short. Each arc holds its buttons spread evenly about its middle, at most 90° apart. Of the ways to split
+ * them, the one whose closest pair is farthest apart wins. Kind goes to the button that leaves the four
+ * nearest their usual places: Kind above, Variation to the right, Design below and Remove to the left.
+ */
+function splitWheel(runs: { start: number; length: number }[], least: number): number[] | undefined {
+  if (runs.length < 2) return undefined;
+  const spread = (run: { start: number; length: number }, count: number): number[] | undefined => {
+    if (count === 1) return [run.start + run.length / 2];
+    const spacing = Math.min(90, run.length / (count - 1));
+    if (spacing < least) return undefined;
+    const start = run.start + (run.length - spacing * (count - 1)) / 2;
+    return Array.from({ length: count }, (_, i) => start + i * spacing);
+  };
+  let best: { angles: number[]; closest: number } | undefined;
+  for (const count of [2, 3, 1]) {
+    const one = spread(runs[0], count);
+    const other = spread(runs[1], 4 - count);
+    if (!one || !other) continue;
+    const angles = [...one, ...other].map((angle) => ((angle % 360) + 360) % 360).sort((a, b) => a - b);
+    const closest = Math.min(...angles.map((angle, i) => (i === 3 ? angles[0] + 360 : angles[i + 1]) - angle));
+    if (closest >= least && (!best || closest > best.closest)) best = { angles, closest };
+  }
+  if (!best) return undefined;
+  const { angles } = best;
+  const apart = (a: number, b: number): number => Math.abs(((a - b + 540) % 360) - 180);
+  const turns = [0, 1, 2, 3].map((turn) => AROUND.map((_, i) => angles[(turn + i) % 4]));
+  const off = (angles: number[]): number => angles.reduce((sum, angle, i) => sum + apart(angle, AROUND[i]), 0);
+  return turns.reduce((a, b) => (off(b) < off(a) ? b : a));
 }
 
 function ranges(thing: Placed): [string, NumberSetting, Range][] {
