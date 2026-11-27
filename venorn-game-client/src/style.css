@@ -4,6 +4,9 @@
      out of the way with safe-area insets, which are 0 on a phone held upright and on a computer. */
   --left: max(10px, env(safe-area-inset-left));
   --right: max(10px, env(safe-area-inset-right));
+  /* Room at the top. In an iPhone app added to the home screen the page reaches under the status bar and the
+     Dynamic Island, and the safe-area inset at the top keeps the menu button and the status line below them. */
+  --top: max(10px, env(safe-area-inset-top));
   --ink: #f6efe0;
   --accent: #e9b84a;
   font-family: Georgia, "Times New Roman", serif;
@@ -50,7 +53,7 @@ label {
 /* The menu of things used now and then, tucked behind one button. */
 #more {
   position: fixed;
-  top: 10px;
+  top: var(--top);
   left: var(--left);
   width: 40px;
   height: 40px;
@@ -64,10 +67,15 @@ label {
 
 #menu {
   position: fixed;
-  top: 58px;
+  top: calc(var(--top) + 48px);
   left: var(--left);
   display: grid;
   gap: 6px;
+  /* On a phone on its side the menu is taller than the page, and it scrolls. */
+  max-height: calc(100% - var(--top) - 48px - max(10px, env(safe-area-inset-bottom)));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
 }
 
 #menu button,
@@ -102,7 +110,7 @@ body:has(#let-go:not([hidden])) #status {
 
 #status {
   position: fixed;
-  top: 10px;
+  top: var(--top);
   left: calc(var(--left) + 50px);
   right: var(--right);
   margin: 0;
