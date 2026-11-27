@@ -4,8 +4,8 @@
      out of the way with safe-area insets, which are 0 on a phone held upright and on a computer. */
   --left: max(10px, env(safe-area-inset-left));
   --right: max(10px, env(safe-area-inset-right));
-  /* Room at the top. In an iPhone app added to the home screen the page reaches under the status bar and the
-     Dynamic Island, and the safe-area inset at the top keeps the menu button and the status line below them. */
+  /* Room at the top. A page that reaches under a status bar or a notch gets a safe-area inset at the top, which
+     keeps the menu button and the status line below them. The iPhone app's status bar is solid, so it adds none. */
   --top: max(10px, env(safe-area-inset-top));
   --ink: #f6efe0;
   --accent: #e9b84a;

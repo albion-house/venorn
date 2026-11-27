@@ -40,7 +40,9 @@ The icons are a square of the original painting, unaltered: the whole width of t
 
 `public/manifest.webmanifest` has `name` "venorn: Veneration, Ornamentation", with the comma as Fawnicorn writes the title, `short_name` "venorn", and a `description` that credits Fawnicorn's painting. `id`, `start_url` and `scope` are `./`, which the browser resolves against the manifest's address, so the site works at https://albion-house.github.io/venorn/ and at the root of `vite preview`. `display` is `standalone`. `fullscreen` would hide Android's status bar, but iOS treats it as `standalone`, and the clock and the battery do no harm to a calm game. The manifest sets no orientation, since the game works upright and on its side.
 
-`index.html` links the manifest, the icons and the launch screens, and sets `theme-color`, `apple-mobile-web-app-title` "venorn", `mobile-web-app-capable` with `apple-mobile-web-app-capable`, and `apple-mobile-web-app-status-bar-style` `black-translucent`. With that status bar the page reaches under the status bar, the scene's sky shows behind the clock, and the clock is drawn in white on it. Vite rewrites the links' root paths to the relative base.
+`index.html` links the manifest, the icons and the launch screens, and sets `theme-color`, `apple-mobile-web-app-title` "venorn", `mobile-web-app-capable` with `apple-mobile-web-app-capable`, and `apple-mobile-web-app-status-bar-style` `black`. Vite rewrites the links' root paths to the relative base.
+
+The status bar is solid, so the page starts below it. `black-translucent` was tried first, so the scene's sky would show behind the clock. In the iPhone 17 simulator on iOS 27.2, the app added to the home screen then drew the page from the top of the screen but laid it out 62 points short: `innerHeight`, the page's height and `100dvh` were 812, while the screen and `100lvh` were 874, and the safe-area inset at the top was 62. A blue band showed below the dock, the dock stood 62 points high, and on the first launch a tap on Start did not reach it. With `black` the page is 812 points tall below a 62-point status bar, it fills the screen, and Start answered the first tap. iOS reads this setting when the app is added, so an app added with the old setting keeps it until it is removed and added again. The top inset stays in the style sheet for browsers and pages that do reach under a status bar.
 
 ### The page keeps its controls inside the safe area at the top
 
@@ -135,5 +137,13 @@ The manifest's name is "venorn: Veneration, Ornamentation", with the title as Fa
 > Context from the drafting agent, for question 5.
 >
 > Each launch screen is about 260 KB. A phone on its side needs seven more, and the iPhone SE, the mini and the iPads more again. Without one, iOS shows the page's blue while the game loads.
+
+<ANSWER_HERE>
+
+### 6 - Should the iPhone app's status bar be solid, or translucent with the scene behind the clock?
+
+> Context from the drafting agent, for question 6.
+>
+> The app uses a solid status bar, because the translucent one left the page 62 points short of the screen on iOS 27.2 in the simulator. A translucent bar would show the sky behind the clock if a later iOS lays the page out to the full screen. The simulator showed no launch screen with either setting: it showed black, then the About screen with the painting.
 
 <ANSWER_HERE>
