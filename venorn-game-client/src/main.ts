@@ -61,6 +61,10 @@ const LAST_KEY = storageKey(ASSET_SET, "last-skull");
 const MIN_RING = 16;
 // A tap this many pixels from the middle of a thing still counts as a tap on it.
 const NEAR_MISS = 14;
+// When the design bar opens over the selected thing, the camera pans until the thing's ring is this many pixels
+// clear of the bar. It goes most of the way in about three times NUDGE_SECONDS.
+const NUDGE_CLEAR = 12;
+const NUDGE_SECONDS = 0.08;
 // The sound's timer runs this often, in milliseconds.
 const SOUND_TICK = 250;
 
@@ -146,6 +150,8 @@ let shaping = false;
 // Things whose shape is recomputed before the next frame is drawn.
 const stale = new Set<Placed>();
 let onScreen: ui.OnScreen | undefined;
+// How far the camera still has to pan, in world units, to bring the selected thing out from under the design bar.
+let nudge: THREE.Vector3 | undefined;
 // The last skull cleared away, which the menu can bring back.
 let lastSkull: SavedSkull | undefined;
 // A saved skull is being put on the structure, so its things are not saved again as they go on.
@@ -332,6 +338,7 @@ function select(thing: Placed | undefined, openWheel = false): void {
   wheelOpen = !!thing && openWheel;
   if (!thing) designOpen = false;
   showDesign();
+  ui.showLetGo(!!thing);
   if (!thing) {
     if (before) say(hint());
     return;
@@ -339,6 +346,36 @@ function select(thing: Placed | undefined, openWheel = false): void {
   const home = homes.get(thing.criteria.id)!;
   variation[home.category] = home.variation;
   show(home.category);
+  // With the wheel open, a tap on the bare skull lets go in place of placing a thing, so the hint says so.
+  if (openWheel) {
+    say(
+      precise
+        ? "Drag it to move it, scroll to resize, Shift+scroll to turn. Click the skull or Done to let go"
+        : "Drag it to move it, pinch to resize, twist to turn. Tap the skull or Done to let go",
+    );
+  }
+}
+
+/**
+ * Pan the camera so the open design bar leaves the selected thing in view. The thing rises above the bar, or
+ * on a phone on its side, where the bar is a panel at the lower left, it goes to the right of the panel if that is
+ * the shorter way.
+ */
+function keepClearOfDesign(thing: Placed): void {
+  const at = whereOnScreen(thing);
+  const bar = ui.designBox();
+  const sphere = thing.mesh.geometry.boundingSphere;
+  if (!at || !bar || !sphere) return;
+  const ring = { left: at.x - at.radius, right: at.x + at.radius, top: at.y - at.radius, bottom: at.y + at.radius };
+  if (ring.right <= bar.left || ring.left >= bar.right || ring.bottom <= bar.top || ring.top >= bar.bottom) return;
+  const up = ring.bottom - bar.top + NUDGE_CLEAR;
+  const right = bar.right - ring.left + NUDGE_CLEAR;
+  const height = canvas.getBoundingClientRect().height;
+  const perPixel = (2 * camera.position.distanceTo(sphere.center) * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2))) / height;
+  camera.updateMatrixWorld();
+  // The camera goes the other way from the thing: down for the thing to rise, left for it to go right.
+  const axis = new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld, up <= right ? 1 : 0);
+  nudge = axis.multiplyScalar(-Math.min(up, right) * perPixel);
 }
 
 /** Open the design bar on the selected thing, or close it. */
@@ -356,6 +393,7 @@ function showDesign(): void {
       showDesign();
     },
   });
+  if (thing) keepClearOfDesign(thing);
 }
 
 /** Recompute a thing's shape before the next frame, and save the skull once the changes stop. */
@@ -698,7 +736,8 @@ function watchKeys(): void {
     }
     if (event.metaKey || event.ctrlKey) return;
     // A slider that has the keyboard keeps its arrow keys.
-    if (event.target instanceof HTMLInputElement && event.key.startsWith("Arrow")) return;
+    const slider = event.target instanceof HTMLElement && event.target.getAttribute("role") === "slider";
+    if ((slider || event.target instanceof HTMLInputElement) && event.key.startsWith("Arrow")) return;
     const digit = Number(event.key);
     if (Number.isInteger(digit) && digit >= 1 && event.key.length === 1) chooseCategory(digit - 1);
     else if (event.key === "ArrowRight") stepVariation(1);
@@ -809,6 +848,7 @@ async function start(): Promise<void> {
   ui.buildDock(categories, chooseCategory);
   show(0);
   ui.watchMenu();
+  ui.onLetGo(() => select(undefined));
   ui.onWheel((action) => {
     if (!selected) return;
     // Kind steps through the categories of things and passes over the pen.
@@ -828,7 +868,11 @@ async function start(): Promise<void> {
     selected: () => selected,
     selectedOnScreen: () => onScreen,
     press: (thing) => select(thing, true),
-    deselect: () => select(undefined),
+    wheelShown: () => wheelOpen && !!onScreen,
+    deselect: (away) => {
+      if (away && onScreen) ui.sendAway(onScreen, away);
+      select(undefined);
+    },
     place,
     move: (thing, hit) => {
       thing.point.copy(hit.point);
@@ -938,6 +982,15 @@ async function start(): Promise<void> {
     surprises?.update(seconds, camera, renderer.domElement.height);
     playMusic(seconds);
     pen?.update(seconds, surroundings?.sun.position ?? camera.position);
+    if (nudge) {
+      // The pan toward the spot where the design bar leaves the selected thing in view, a little each frame.
+      const part = nudge.clone().multiplyScalar(1 - Math.exp(-step / NUDGE_SECONDS));
+      if (nudge.length() < 0.002 * STRUCTURE_SIZE) part.copy(nudge);
+      camera.position.add(part);
+      controls.target.add(part);
+      nudge.sub(part);
+      if (nudge.lengthSq() === 0) nudge = undefined;
+    }
     controls.target.clamp(farthest, reach);
     controls.update();
     renderer.render(scene, camera);
