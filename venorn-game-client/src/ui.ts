@@ -568,6 +568,11 @@ export function showDesign(
   draw();
 }
 
+/** Where the open design bar is on the screen. */
+export function designBox(): DOMRect | undefined {
+  return design.hidden ? undefined : design.getBoundingClientRect();
+}
+
 /** Show the thing's settings in the design bar after a gesture, a key or Reset changed them. */
 export function refreshDesign(thing: Placed): void {
   if (bar?.thing === thing) bar.draw();
