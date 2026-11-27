@@ -22,17 +22,19 @@ Where venorn stands as of 2026-11-26, what waits on codekiln, and what was discu
 | The game is published at https://albion-house.github.io/venorn/ on every push to `main` that touches the client. The asset set comes from a GitHub release, and `fetch-assets` gets it without running the pipeline | [#39](https://github.com/albion-house/venorn/pull/39) |
 | On a phone on its side the strip stands down the left side and the dock at the lower right, the design bar opens as a panel at the lower left, and the wheel keeps clear of them and of the safe area | [#41](https://github.com/albion-house/venorn/pull/41) |
 | The game opens on an About screen with Fawnicorn's painting, its title as the artist writes it, a link to the painting's page and the build's version. About, first in the menu, opens it again. The asset set carries a copy of the painting and the title, artist and page | [#45](https://github.com/albion-house/venorn/pull/45) |
+| A selected thing is let go with Done at the top right, a flick on it, or a tap with its wheel open. The design bar lays its settings out in a grid of 44-point cells that show their values, with a slider drawn by the page between a minus and a plus button. The camera pans when the bar opens over the thing | [#46](https://github.com/albion-house/venorn/pull/46) |
 
 Every feature after the pipeline is a first version. codekiln called the ideas behind them tentative.
 
 ## How each was checked
 
-- The pipeline has 50 unit tests. `mise run check` runs them and validates every OpenSpec change, and it passes.
+- The pipeline has 54 unit tests. `mise run check` runs them and validates every OpenSpec change, and it passes.
 - The viewer was checked with scripted pointer, wheel, key and touch events in a desktop browser, at laptop size and at 375 by 812, and with pictures read from the canvas. Each OpenSpec change's `tasks.md` records the measurements.
 - The game was tried by touch in Xcode's iPhone 17 simulator, in Safari. [The comment on #25](https://github.com/albion-house/venorn/issues/25#issuecomment-7204288883) lists what works and the problems seen. The simulator draws with the Mac's graphics chip, so it says nothing about a phone's speed. The fixes in #38 were checked with scripted touch in headless Chrome, with the phone's safe-area insets faked, and then in the simulator, upright and on its side ([comment on #25](https://github.com/albion-house/venorn/issues/25#issuecomment-7205796448)).
 - The published site was opened in Chrome on the Mac and in the simulator, where a tap placed a butterfly.
 - The layout for a phone on its side in #41 was checked with scripted touch in headless Chrome at 874 by 339, the simulator's page in Safari, with the safe-area insets faked for the island at either side. It has not been tried in the simulator.
 - The About screen in #45 was checked on the built site with scripted touch in headless Chrome at 402 by 874 and at 874 by 339, with the safe-area insets faked, and with a mouse at 1280 by 800. It has not been tried in the simulator.
+- Letting go and the design bar in #46 were checked with scripted touch in headless Chrome at 402 by 874 and at 874 by 339, with the safe-area insets faked, and with a mouse at 1280 by 800. They have not been tried in the simulator.
 - Not checked on any real phone. codekiln listened to the music from #20 and asked for the changes in #36. Nobody has heard #36. The frame rate has not been measured.
 
 ## Waiting on codekiln
@@ -58,6 +60,7 @@ Each has background and a place for an answer in its `design.md`.
 - `openspec/changes/fix-simulator-problems/design.md`: whether half a second and 20 pixels tell the start of a zoom from a short stroke, and whether the clouds above the top of the painting look right.
 - `openspec/changes/fix-landscape-layout/design.md`: whether the strip and the dock stand on opposite sides or together, and whether four buttons in one arc start from the one nearest Kind's usual place.
 - `openspec/changes/add-about-screen/design.md`: whether the About screen opens on every load or only on a first visit, and whether Start waits until the scene has loaded.
+- `openspec/changes/let-go-and-design-by-touch/design.md`: whether Done belongs at the top right, whether a flick is told from a drag at the right speed, whether a tap on the skull with a wheel open lets go or places a thing, and whether the open design bar takes the strip's place upright.
 - `openspec/changes/add-described-things/design.md`: how a described thing joins the five categories in the dock, how voice input works, where the image comes from, whether a described thing takes its size and criteria from the nearest kind, and whether described things keep the relief models if TRELLIS.2 makes the skull.
 
 ## Discussed and not built
@@ -90,6 +93,7 @@ The simulator showed four more, listed in the comment on #25, and a fifth with t
 | `fix-simulator-problems` | 6.1 try the fixes on a real phone. The simulator check is done |
 | `fix-landscape-layout` | 4.1 try the layout in the simulator on its side, turned both ways, and on a real phone |
 | `add-about-screen` | 3.2 look at the About screen on a phone, upright and on its side |
+| `let-go-and-design-by-touch` | 3.2 try letting go and the design bar on a real phone and in the simulator |
 | `add-described-things` | every task: lifting one image, a process that keeps the models loaded, and pinning a model the page receives |
 
 Archive a change with `openspec archive <name>` once its tasks are checked.
