@@ -265,3 +265,68 @@ label {
     height: 54px;
   }
 }
+
+/* A wide, short window, such as a phone on its side. Bars at the bottom would cover the lower half of the
+   skull, so the variations stand down the left side under the left thumb, and the categories stand in two
+   columns at the lower right under the right thumb. The middle is left for the skull. */
+@media (orientation: landscape) and (max-height: 500px) {
+  /* The open menu stands over the strip. */
+  #menu {
+    z-index: 1;
+  }
+
+  #dock {
+    left: auto;
+    right: var(--right);
+    transform: none;
+    display: grid;
+    grid-template-columns: repeat(2, auto);
+    gap: 6px;
+    border-radius: 32px;
+  }
+
+  #dock button {
+    width: 52px;
+    height: 52px;
+  }
+
+  /* The strip starts below the menu button and scrolls up and down. */
+  #strip {
+    left: var(--left);
+    right: auto;
+    bottom: max(10px, env(safe-area-inset-bottom));
+    max-height: calc(100% - 58px - max(10px, env(safe-area-inset-bottom)));
+    flex-direction: column;
+    padding: 4px;
+    overflow-x: hidden;
+    overflow-y: auto;
+    touch-action: pan-y;
+  }
+
+  #strip.fit button {
+    flex: 0 0 auto;
+    width: 46px;
+    height: 46px;
+    min-width: 0;
+  }
+
+  /* The design bar opens as a panel at the lower left, in place of the strip, so the middle keeps its full
+     height for the skull and the wheel. Its settings wrap into rows. */
+  #design {
+    left: var(--left);
+    bottom: max(10px, env(safe-area-inset-bottom));
+    transform: none;
+    width: 220px;
+    max-height: calc(100% - 58px - max(10px, env(safe-area-inset-bottom)));
+    overflow-y: auto;
+  }
+
+  #design .chips {
+    flex-wrap: wrap;
+  }
+
+  /* The panel lets the strip show through, so the strip steps aside while the panel is open. */
+  body:has(#design:not([hidden])) #strip {
+    visibility: hidden;
+  }
+}
