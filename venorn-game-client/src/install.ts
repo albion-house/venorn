@@ -1,6 +1,8 @@
-// Adding the game to a home screen or the Dock.
+// Adding the game to a home screen or the Dock, and keeping it on the device.
 //
-// The last item in the menu shows how to add the game as an app in the browser the page is open in.
+// The last item in the menu shows how to add the game as an app in the browser the page is open in. A
+// service worker keeps the asset set and the page, so the game opens without downloading the models
+// again, and opens offline.
 
 /** The browsers the menu has steps for. The steps follow each browser maker's help pages. */
 export type Browser =
@@ -109,8 +111,9 @@ function installed(): boolean {
   );
 }
 
-/** Show the steps for this browser in the menu. */
+/** Show the steps for this browser in the menu, and keep the game on the device. */
 export function setUpApp(): void {
+  keepOnDevice();
   const item = document.querySelector<HTMLButtonElement>("#install");
   if (!item) return;
   if (installed()) {
@@ -176,4 +179,31 @@ function showSteps(browser: Browser, prompt: InstallPrompt | undefined, used: ()
   box.append(buttons);
   panel.replaceChildren(box);
   panel.showModal();
+}
+
+/**
+ * Register the service worker that keeps the asset set and the page. The live-reload server registers
+ * none, so a change shows at once while working on the game.
+ */
+function keepOnDevice(): void {
+  if (!import.meta.env.PROD || !("serviceWorker" in navigator)) return;
+  const workers = navigator.serviceWorker;
+  // A worker for a new asset set or a new sw.js takes over from the last one. The page reloads once, so
+  // the game's code and the asset set come from the same release.
+  const replacing = Boolean(workers.controller);
+  let reloading = false;
+  workers.addEventListener("controllerchange", () => {
+    if (!replacing || reloading) return;
+    reloading = true;
+    window.location.reload();
+  });
+  const key = encodeURIComponent(`${__VENORN_ASSETS_TAG__ || "untagged"}-${__VENORN_ASSETS_SUM__}`);
+  const base = import.meta.env.BASE_URL;
+  workers
+    .register(`${base}sw.js?assets=${key}`, { scope: base })
+    .then(() => workers.ready)
+    .then((registration) => registration.active?.postMessage("keep-assets"))
+    .catch((error: unknown) => console.warn("The game could not be kept for offline use.", error));
+  // An installed app asks the browser not to clear its storage when the device runs short of space.
+  if (installed()) void navigator.storage?.persist?.();
 }
