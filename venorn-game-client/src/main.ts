@@ -346,6 +346,14 @@ function select(thing: Placed | undefined, openWheel = false): void {
   const home = homes.get(thing.criteria.id)!;
   variation[home.category] = home.variation;
   show(home.category);
+  // With the wheel open, a tap on the bare skull lets go in place of placing a thing, so the hint says so.
+  if (openWheel) {
+    say(
+      precise
+        ? "Drag it to move it, scroll to resize, Shift+scroll to turn. Click the skull or Done to let go"
+        : "Drag it to move it, pinch to resize, twist to turn. Tap the skull or Done to let go",
+    );
+  }
 }
 
 /**
