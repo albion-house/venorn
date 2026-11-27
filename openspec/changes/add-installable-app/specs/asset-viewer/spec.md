@@ -28,18 +28,18 @@ The menu's last item SHALL show how to add the game as an app in the browser the
 
 ### Requirement: Controls clear of the status bar
 
-The menu button, the status line and the menu SHALL stand inside the screen's safe area at the top, and the wheel SHALL stay below the menu button. The menu SHALL scroll when it is taller than the room below the menu button.
+The menu button, the status line, the menu and the Done button SHALL stand inside the screen's safe area at the top, and the wheel SHALL stay below the menu button. The menu SHALL scroll when it is taller than the room below the menu button.
 
 #### Scenario: iPhone app
 
 - **WHEN** the game runs as an app on an iPhone 17, with a safe-area inset of 62 points at the top
-- **THEN** the menu button, the status line and the menu stand below 62 points
+- **THEN** the menu button, the status line, the menu and the Done button stand below 62 points
 - **AND** the wheel of a thing near the top of the screen stands below the menu button
 
 #### Scenario: Browser window
 
 - **WHEN** the game runs in a browser window, where the safe-area inset at the top is 0
-- **THEN** the menu button and the status line stand where they stood before this change
+- **THEN** the menu button, the status line and the Done button stand where they stood before this change
 
 #### Scenario: Phone on its side
 

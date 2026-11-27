@@ -6,7 +6,7 @@ What the site does today, measured on 2026-11-26:
 
 - `index.html` has no manifest and an empty icon. Added to a home screen, the game opens as a browser tab.
 - GitHub Pages answers every file with `Cache-Control: max-age=600` and an `ETag`. After ten minutes the browser asks the server about each file again, and it may clear its cache whenever it needs room. The asset set is 120 files and 25 MB since #45 added `original.jpg`.
-- The menu button and the status line stand at `top: 10px`. #38 kept them inside the safe area at the left and right with `--left` and `--right`, but not at the top. In Safari's browser window the safe-area inset at the top is 0, so this did not show.
+- The menu button and the status line stand at `top: 10px`, and Done, which #46 added at the top right while a thing is selected, at `top: 8px`. #38 kept the controls inside the safe area at the left and right with `--left` and `--right`, but not at the top. In Safari's browser window the safe-area inset at the top is 0, so this did not show.
 
 ## Goals / Non-Goals
 
@@ -16,7 +16,7 @@ What the site does today, measured on 2026-11-26:
 - The menu says how to do that in the browser the page is open in, in steps that match the browser maker's help pages.
 - After the first visit, opening the game downloads nothing from the asset set until a new asset set is published, and the game opens offline.
 - A new build of the site shows on the next visit.
-- In an iPhone app the menu button, the status line, the menu and the wheel stay clear of the status bar and the Dynamic Island.
+- In an iPhone app the menu button, the status line, the menu, Done and the wheel stay clear of the status bar and the Dynamic Island.
 
 **Non-Goals:**
 
@@ -44,7 +44,7 @@ The icons are a square of the original painting, unaltered: the whole width of t
 
 ### The page keeps its controls inside the safe area at the top
 
-`--top` is the larger of 10 pixels and `env(safe-area-inset-top)`, the same rule #38 made for the sides. The menu button and the status line stand at `--top`, and the menu 48 pixels below it. In an iPhone 17 app the inset is 62, so they move from 10 to 62 pixels down. Everywhere else the inset at the top is 0 and nothing moves.
+`--top` is the larger of 10 pixels and `env(safe-area-inset-top)`, the same rule #38 made for the sides. The menu button and the status line stand at `--top`, and the menu 48 pixels below it. Done stands at the larger of 8 pixels and the inset, so it is level with the menu button in a browser and 2 pixels lower than level in the app, where level would put its top 2 pixels inside the inset. In an iPhone 17 app the inset is 62, so they move to 62 pixels down. Everywhere else the inset at the top is 0 and nothing moves.
 
 The wheel used to keep 50 pixels at the top free for the button and the status line. It now starts below the menu button's box, read from the page, which is 50 pixels where the inset is 0 and 102 in the app. That is one line in `src/ui.ts`.
 

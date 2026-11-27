@@ -14,14 +14,14 @@ What exists now:
 
 - The site has no web app manifest and no icon. `index.html` sets an empty icon. Added to an iPhone's home screen, the game opens as a Safari tab with a picture of the page as its icon.
 - The asset set, 119 files and 25 MB, is kept only by the browser's own cache. GitHub Pages sends `Cache-Control: max-age=600`, so after ten minutes the browser asks the server about each file again, and it may drop the files whenever it needs room. Offline the game does not open.
-- The menu button and the status line stand 10 pixels from the top of the page. In an iPhone app opened from the home screen the page reaches under the status bar, so they would sit under the clock and the Dynamic Island.
+- The menu button and the status line stand 10 pixels from the top of the page, and Done, which #46 added at the top right, 8 pixels. In an iPhone app opened from the home screen the page reaches under the status bar, so they would sit under the clock and the Dynamic Island.
 
 This change proposes:
 
 - A web app manifest, icons cut from the painting, iPhone launch screens that show the whole painting, and the meta tags iOS reads, so the game opens as an app from a home screen or the Dock.
 - A last item in the ⋯ menu that shows how to add the game as an app in the browser the page is open in: Chrome or Safari on an iPhone or iPad, Chrome on a computer, Safari on a Mac, and Chrome on Android. Where Chrome offers its own install prompt, the steps have an Install button. In the installed app the item is hidden.
 - A service worker that keeps the asset set on the device after the first download until a new asset set is published, keeps the page and its scripts, and lets the game open offline.
-- The menu button, the status line and the menu stay inside the safe area at the top, and the wheel stays below them.
+- The menu button, the status line, the menu and Done stay inside the safe area at the top, and the wheel stays below the menu button.
 
 ## Capabilities
 
