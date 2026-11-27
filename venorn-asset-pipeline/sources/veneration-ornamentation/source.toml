@@ -1,9 +1,16 @@
 name = "veneration-ornamentation"
-title = "Veneration Ornamentation"
+
+# The work, as its artist presents it. The game's About screen shows the title,
+# the artist and a link to the page, with a smaller copy of the image.
+title = "Veneration, Ornamentation"
+artist = "Fawnicorn"
+page = "https://fawnicorn.com/personal-art/veneration-ornamentation/"
 
 [image]
 url = "https://fawnicorn.com/assets/art/veneration-ornamentation.jpg"
 sha256 = "cee2789a4be34d8a91ea36cc81c4d37f80cb5f64d472590a0368c8b5f89af402"
+# What the painting shows, for a person who cannot see it.
+description = "A unicorn skull decorated with butterflies, wrapped candies, pills, beads and painted flowers, lying in a meadow of flowers in front of a dark forest and a sky of curling clouds."
 
 # The surface that things are pinned to. Each prompt is looked for in the whole
 # image, and the parts found are joined into one model.
