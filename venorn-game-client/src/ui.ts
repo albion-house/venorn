@@ -480,6 +480,8 @@ export function showDesign(
     };
     const repeat = (delay: number): void => {
       timer = window.setTimeout(() => {
+        // The bar may have closed or been rebuilt under the finger, and then the button no longer answers it.
+        if (!button.isConnected) return stop();
         step(by);
         repeat(REPEAT_EVERY);
       }, delay);
